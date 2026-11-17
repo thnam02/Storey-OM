@@ -3,6 +3,7 @@ import { departmentById } from '../data/sample';
 import { useSnapshot } from '../state/serverData';
 import { useUiStore } from '../state/uiStore';
 import { DepartmentPanel } from './DepartmentPanel';
+import { LockedPanel } from './LockedPanel';
 import { Overview } from './Overview';
 import { PersonView } from './person/PersonView';
 
@@ -14,6 +15,7 @@ export function PanelShell() {
   const deptId = useUiStore((s) => s.selectedDeptId);
   const personId = useUiStore((s) => s.selectedEmployeeId);
   const tab = useUiStore((s) => s.deptTab);
+  const locked = useUiStore((s) => s.lockedDeptId);
   const employees = useSnapshot().team.employees;
   const person = personId ? employees.find((e) => e.id === personId) : undefined;
   const ref = useRef<HTMLElement>(null);
@@ -21,11 +23,19 @@ export function PanelShell() {
   // Start at the top when moving to another view; edits keep the scroll position.
   useLayoutEffect(() => {
     if (ref.current) ref.current.scrollTop = 0;
-  }, [deptId, personId, tab]);
+  }, [deptId, personId, tab, locked]);
 
   return (
     <aside className="panel" aria-live="polite" ref={ref}>
-      {person ? <PersonView key={person.id} person={person} /> : deptId ? <DepartmentPanel dept={departmentById[deptId]} /> : <Overview />}
+      {person ? (
+        <PersonView key={person.id} person={person} />
+      ) : deptId ? (
+        <DepartmentPanel dept={departmentById[deptId]} />
+      ) : locked ? (
+        <LockedPanel dept={departmentById[locked]} />
+      ) : (
+        <Overview />
+      )}
     </aside>
   );
 }

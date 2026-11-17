@@ -2,7 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useState } from 'react';
 import { DEPARTMENTS } from '../data/sample';
 import { departmentStatus } from '../data/status';
-import type { CompanyData, TeamData } from '../data/types';
+import type { CompanyData, DepartmentId, TeamData } from '../data/types';
 import { workloadByEmployee } from '../data/workload';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import { useUiStore } from '../state/uiStore';
@@ -40,7 +40,13 @@ export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }
   const reducedMotion = useReducedMotion();
   const hoverDept = useUiStore((s) => s.hoverDept);
   const openDept = useUiStore((s) => s.selectedDeptId);
-  const load = useMemo(() => workloadByEmployee(team.employees, team.tasks, team.today, team.weekStart), [team]);
+  const openable = useUiStore((s) => s.openable);
+  const canOpen = (id: DepartmentId) => !openable || openable.has(id);
+  // Workload only for departments the viewer can see; everyone else gets a neutral ring.
+  const load = useMemo(() => {
+    const seen = team.employees.filter((e) => !openable || openable.has(e.departmentId));
+    return workloadByEmployee(seen, team.tasks, team.today, team.weekStart);
+  }, [team, openable]);
   const warehouseTeam = useMemo(() => team.employees.filter((e) => e.departmentId === 'warehouse'), [team.employees]);
   // Name tags for everyone on site on the open floor.
   const tagged = useMemo(
@@ -75,7 +81,7 @@ export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }
       </Canvas>
       <div className="labels">
         {DEPARTMENTS.map((d) => (
-          <DeptLabel key={d.id} dept={d} flagged={departmentStatus(d.id, data).tone === 'warn'} />
+          <DeptLabel key={d.id} dept={d} locked={!canOpen(d.id)} flagged={canOpen(d.id) && departmentStatus(d.id, data).tone === 'warn'} />
         ))}
         {tagged.map((e) => (
           <PersonTag key={e.id} person={e} workload={load.get(e.id)!} />

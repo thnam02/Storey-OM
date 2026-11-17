@@ -1,13 +1,17 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { visibleDepartments } from '../data/access';
 import { applyAction } from '../data/source/applyAction';
 import { createDataSource, type Action, type Snapshot } from '../data/source';
 import { nowOnDay } from '../lib/zonedTime';
+import { useUiStore } from './uiStore';
 import { applyInitialHash } from './useHashSync';
 
 /**
- * Server data through TanStack Query: one snapshot of the company, and one
- * mutation for every change. Changes show at once (optimistic) and are
- * replaced by what the database returns; a refused change rolls back.
+ * Server data through TanStack Query: the signed-in account, one snapshot of
+ * what that person can see, and one mutation for every change. Changes show
+ * at once (optimistic) and are replaced by what the database returns; a
+ * refused change rolls back.
  */
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
@@ -15,6 +19,7 @@ export const queryClient = new QueryClient({
 
 const source = createDataSource();
 export const dataSourceKind = source.kind;
+const ACCOUNT = ['account'] as const;
 const SNAPSHOT = ['snapshot'] as const;
 
 let hashApplied = false;
@@ -26,17 +31,61 @@ async function loadSnapshot(): Promise<Snapshot> {
     applyInitialHash(snap.team.employees);
     hashApplied = true;
   }
+  // After the hash, so a link to a department the viewer can't open shows the locked notice.
+  useUiStore.getState().setOpenable(visibleDepartments(snap.viewer));
   return snap;
 }
 
-export const useSnapshotQuery = () => useQuery({ queryKey: SNAPSHOT, queryFn: loadSnapshot });
+/** The signed-in account (null: show the sign-in screen). Follows sign-in and sign-out. */
+export function useAccountQuery() {
+  const qc = useQueryClient();
+  useEffect(
+    () =>
+      // Refetch in place, so switching who to view as in the sample keeps the 3D view.
+      source.onAccountChange(() => {
+        void qc.invalidateQueries({ queryKey: ACCOUNT });
+        void qc.invalidateQueries({ queryKey: SNAPSHOT });
+      }),
+    [qc],
+  );
+  return useQuery({
+    queryKey: ACCOUNT,
+    queryFn: async () => {
+      const account = await source.account();
+      // Signed out: forget what the last person could see.
+      if (!account) qc.removeQueries({ queryKey: SNAPSHOT });
+      return account;
+    },
+    staleTime: Infinity,
+  });
+}
+
+export const useSnapshotQuery = (enabled = true) => useQuery({ queryKey: SNAPSHOT, queryFn: loadSnapshot, enabled });
 
 /** The loaded snapshot. Only for components rendered after it has loaded. */
 export function useSnapshot(): Snapshot {
-  const { data } = useSnapshotQuery();
+  const { data } = useQuery({ queryKey: SNAPSHOT, queryFn: loadSnapshot, enabled: false });
   if (!data) throw new Error('useSnapshot() used before the company data loaded');
   return data;
 }
+
+/** Email a sign-in link. */
+export const useSignIn = () => useMutation({ mutationFn: (email: string) => source.signIn(email) });
+
+export function useSignOut() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => source.signOut(),
+    onSuccess: () => {
+      useUiStore.getState().selectDept(null);
+      qc.removeQueries({ queryKey: SNAPSHOT });
+      void qc.invalidateQueries({ queryKey: ACCOUNT });
+    },
+  });
+}
+
+/** Sample only: use the app as another manager or director. */
+export const viewAs = source.viewAs?.bind(source);
 
 let pendingSeq = 0;
 

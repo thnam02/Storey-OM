@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { Employee } from '../../data/types';
 import type { Workload } from '../../data/workload';
-import { WORKLOAD_STATE } from '../../data/workload';
+import { ringColor } from '../../data/workload';
 import { seedFor, type Rect } from '../../layout/floorLayout';
 import { createRandom } from '../../lib/seededRandom';
 import { ANCHOR_Y, HI_VIS, StandingFigure } from './Figures';
@@ -35,7 +35,7 @@ export function WarehousePeople({ team, load, open, animate }: Props) {
     <>
       {walkers.map(({ p, inAisle }) => (
         <Walker key={p.id} personId={p.id} area={inAisle ? AISLE : FRONT} speed={inAisle ? AISLE_SPEED : FRONT_SPEED} y={FLOOR_TOP} animate={animate}>
-          <PersonNode person={p} ringColor={WORKLOAD_STATE[load.get(p.id)?.state ?? 'ok'].color} open={open} animate={animate} anchorY={ANCHOR_Y.standing}>
+          <PersonNode person={p} ringColor={ringColor(load.get(p.id))} open={open} animate={animate} anchorY={ANCHOR_Y.standing}>
             <StandingFigure personId={p.id} shirt={HI_VIS} />
           </PersonNode>
         </Walker>

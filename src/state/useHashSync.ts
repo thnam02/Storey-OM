@@ -20,7 +20,7 @@ export function useHashSync(employees: readonly Employee[]) {
     window.addEventListener('hashchange', onHash);
 
     const unsubscribe = useUiStore.subscribe((s, prev) => {
-      if (s.selectedDeptId === prev.selectedDeptId && s.selectedEmployeeId === prev.selectedEmployeeId) return;
+      if (s.selectedDeptId === prev.selectedDeptId && s.selectedEmployeeId === prev.selectedEmployeeId && s.lockedDeptId === prev.lockedDeptId) return;
       const next = toHash(s);
       if (window.location.hash.slice(1) !== next) window.location.hash = next;
     });

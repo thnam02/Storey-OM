@@ -59,3 +59,9 @@ export function shortName(name: string): string {
   const last = parts[parts.length - 1] ?? '';
   return parts.length > 1 ? `${parts[0]} ${last[0]}.` : name;
 }
+
+/** Ring colour for someone whose workload the viewer can't see (another department). */
+export const NO_WORKLOAD_COLOR = '#a9b3ba';
+
+/** Status ring colour: the workload state, or neutral when it isn't known. */
+export const ringColor = (w: Workload | undefined) => (w ? WORKLOAD_STATE[w.state].color : NO_WORKLOAD_COLOR);

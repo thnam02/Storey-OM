@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { departmentById } from '../../data/sample';
 import type { Employee, WarehouseData } from '../../data/types';
-import { WORKLOAD_STATE, type Workload } from '../../data/workload';
+import { ringColor, type Workload } from '../../data/workload';
 import { useUiStore } from '../../state/uiStore';
 import { SEEDS, WAREHOUSE } from '../constants';
 import { BuildingHitArea } from '../interaction/BuildingHitArea';
@@ -83,7 +83,7 @@ export function Warehouse({ data, team, load, animate }: Props) {
         ))}
         <Forklift
           animate={animate}
-          driver={driver && { person: driver, ringColor: WORKLOAD_STATE[load.get(driver.id)?.state ?? 'ok'].color, open }}
+          driver={driver && { person: driver, ringColor: ringColor(load.get(driver.id)), open }}
         />
         <WarehousePeople team={team} load={load} open={open} animate={animate} />
 

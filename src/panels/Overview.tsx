@@ -1,4 +1,5 @@
-import { DEPARTMENTS } from '../data/sample';
+import { canSee } from '../data/access';
+import { DEPARTMENTS, departmentById } from '../data/sample';
 import { peopleIn, revenueThisYear, teamWorkload, totals } from '../data/metrics';
 import { departmentStatus } from '../data/status';
 import type { Department } from '../data/types';
@@ -16,11 +17,12 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 export function Overview() {
   const data = useSnapshot().company;
   const team = useSnapshot().team;
-  const { activity, isSample } = useSnapshot();
+  const { activity, isSample, viewer } = useSnapshot();
   const hovered = useUiStore((s) => s.hoveredDeptId);
   const { selectDept, hoverDept } = useUiStore.getState();
   const load = teamWorkload(team);
   const all = totals(team.employees, load);
+  const own = viewer && viewer.role === 'manager' ? departmentById[viewer.departmentId] : null;
 
   return (
     <>
@@ -33,15 +35,42 @@ export function Overview() {
       </div>
       <div className="pb">
         <div className="kpis">
-          <Kpi k="Revenue this year" v={formatShortMoney(revenueThisYear(data.finance))} s={`Jan to ${formatDay(team.today)}`} />
-          <Kpi k="Open tasks" v={all.open} s="across all teams" />
+          {canSee(viewer, 'finance') ? (
+            <Kpi k="Revenue this year" v={formatShortMoney(revenueThisYear(data.finance))} s={`Jan to ${formatDay(team.today)}`} />
+          ) : (
+            <Kpi k="Your team" v={own ? peopleIn(team, own.id).length : 0} s={own ? `people in ${own.name}` : 'people'} />
+          )}
+          <Kpi k="Open tasks" v={all.open} s={own ? `in ${own.name}` : 'across all teams'} />
           <Kpi k="Overdue tasks" v={all.late} s="need follow-up" late={all.late > 0} />
         </div>
         <Section title="Departments" small="Click to open the floor">
           <div className="list">
             {DEPARTMENTS.map((d) => {
-              const st = departmentStatus(d.id, data);
               const people = peopleIn(team, d.id);
+              if (!canSee(viewer, d.id)) {
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    className={`ditem locked${hovered === d.id ? ' hot' : ''}`}
+                    style={accent(d.color)}
+                    onClick={() => {
+                      hoverDept(null);
+                      selectDept(d.id);
+                    }}
+                    onPointerEnter={() => hoverDept(d.id)}
+                    onPointerLeave={() => hoverDept(null)}
+                  >
+                    <span className="swatch" />
+                    <b>{d.name}</b>
+                    <Chip tone="muted">No access</Chip>
+                    <span className="sub">
+                      {where(d)} · {people.length} people
+                    </span>
+                  </button>
+                );
+              }
+              const st = departmentStatus(d.id, data);
               const late = totals(people, load).late;
               return (
                 <button
@@ -70,7 +99,8 @@ export function Overview() {
         </Section>
         <ActivityFeed entries={activity} />
         <div className="note">
-          {isSample && 'Sample data. '}Click a floor to open its floor plan and team, then click a person to see their tasks.{' '}
+          {isSample && 'Sample data. '}
+          {own && `You manage ${own.name}; directors can open every department. `}Click a floor to open its floor plan and team, then click a person to see their tasks.{' '}
           {dataSourceKind === 'sample'
             ? 'No database is connected, so changes last until you reload.'
             : 'Changes are saved to the database and logged.'}

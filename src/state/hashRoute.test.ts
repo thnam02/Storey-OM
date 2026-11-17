@@ -18,6 +18,10 @@ describe('hash routes', () => {
     expect(parseHash('', people)).toEqual({ selectedDeptId: null, selectedEmployeeId: null });
   });
 
+  it('keeps a locked department in the link', () => {
+    expect(toHash({ selectedDeptId: null, selectedEmployeeId: null, lockedDeptId: 'finance' })).toBe('finance');
+  });
+
   it('round-trips', () => {
     for (const h of ['sales', 'p-linh-nguyen', 'overview']) {
       expect(toHash(parseHash(`#${h}`, people))).toBe(h);

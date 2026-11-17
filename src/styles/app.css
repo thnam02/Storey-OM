@@ -169,3 +169,21 @@ svg text { font-family: var(--mono); font-size: 10.5px; fill: var(--muted); }
   form.assign { grid-template-columns: 1fr 1fr; }
   form.assign input { grid-column: 1 / -1; }
 }
+
+/* Sign-in, who is using the app, and departments the viewer can't open */
+.card.gate { width: min(420px, 100%); background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; display: grid; gap: 12px; text-align: left; color: var(--ink); box-shadow: 0 6px 24px rgba(20, 30, 40, .08); }
+.card.gate h2 { font: 600 19px/1.25 var(--display); margin: 0; }
+.card.gate p { margin: 0; color: var(--muted); }
+.card.gate .btn { justify-self: start; }
+.field { display: grid; gap: 5px; font-size: 12.5px; font-weight: 500; }
+.field input { padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; font-weight: 400; }
+.note.bad { background: #f8e0dd; color: #9a2f27; }
+.viewer { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
+.viewer > span { display: grid; line-height: 1.2; }
+.viewer select { padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; max-width: 280px; }
+.tag.locked { color: var(--muted); background: rgba(246, 248, 249, .92); }
+.tag.locked .dot { opacity: .45; }
+.tag .lock { color: var(--muted); flex: none; }
+.ditem.locked b { color: var(--muted); }
+.ditem.locked .swatch { opacity: .45; }
+@media (max-width: 440px) { .viewer select { max-width: 100%; } }

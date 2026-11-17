@@ -18,7 +18,8 @@ export function parseHash(hash: string, employees: readonly Pick<Employee, 'id' 
   return isDepartmentId(h) ? { selectedDeptId: h, selectedEmployeeId: null } : OVERVIEW;
 }
 
-export function toHash(route: Route): string {
+/** The hash for a selection. A department the viewer can't open keeps its own hash, so the link still explains itself. */
+export function toHash(route: Route & { lockedDeptId?: DepartmentId | null }): string {
   if (route.selectedEmployeeId) return `p-${route.selectedEmployeeId}`;
-  return route.selectedDeptId ?? 'overview';
+  return route.selectedDeptId ?? route.lockedDeptId ?? 'overview';
 }
