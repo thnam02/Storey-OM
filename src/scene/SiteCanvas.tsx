@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber';
 import { useEffect, useMemo, useState } from 'react';
+import { canSee, canSeeTasksOf, type Viewer } from '../data/access';
 import { DEPARTMENTS } from '../data/sample';
 import { departmentStatus } from '../data/status';
 import type { CompanyData, DepartmentId, TeamData } from '../data/types';
@@ -35,18 +36,18 @@ function useFontsReady() {
  * The 3D company site. Navigation only: it reads company data and UI state,
  * and reports hover and selection through the UI store.
  */
-export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }) {
+export function SiteCanvas({ data, team, viewer }: { data: CompanyData; team: TeamData; viewer: Viewer | null }) {
   const fontsReady = useFontsReady();
   const reducedMotion = useReducedMotion();
   const hoverDept = useUiStore((s) => s.hoverDept);
   const openDept = useUiStore((s) => s.selectedDeptId);
   const openable = useUiStore((s) => s.openable);
   const canOpen = (id: DepartmentId) => !openable || openable.has(id);
-  // Workload only for departments the viewer can see; everyone else gets a neutral ring.
+  // Workload only for people whose tasks the viewer sees; everyone else gets a neutral ring.
   const load = useMemo(() => {
-    const seen = team.employees.filter((e) => !openable || openable.has(e.departmentId));
+    const seen = team.employees.filter((e) => canSeeTasksOf(viewer, e));
     return workloadByEmployee(seen, team.tasks, team.today, team.weekStart);
-  }, [team, openable]);
+  }, [team, viewer]);
   const warehouseTeam = useMemo(() => team.employees.filter((e) => e.departmentId === 'warehouse'), [team.employees]);
   // Name tags for everyone on site on the open floor.
   const tagged = useMemo(
@@ -81,10 +82,10 @@ export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }
       </Canvas>
       <div className="labels">
         {DEPARTMENTS.map((d) => (
-          <DeptLabel key={d.id} dept={d} locked={!canOpen(d.id)} flagged={canOpen(d.id) && departmentStatus(d.id, data).tone === 'warn'} />
+          <DeptLabel key={d.id} dept={d} locked={!canOpen(d.id)} flagged={canSee(viewer, d.id) && departmentStatus(d.id, data).tone === 'warn'} />
         ))}
         {tagged.map((e) => (
-          <PersonTag key={e.id} person={e} workload={load.get(e.id)!} />
+          <PersonTag key={e.id} person={e} workload={load.get(e.id)} />
         ))}
       </div>
     </>

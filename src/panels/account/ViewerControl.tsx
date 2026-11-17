@@ -1,5 +1,5 @@
 import { ROLE_LABEL } from '../../data/access';
-import { departmentById } from '../../data/sample';
+import { DEPARTMENTS, departmentById } from '../../data/sample';
 import type { Snapshot } from '../../data/source';
 import { useSignOut, viewAs } from '../../state/serverData';
 
@@ -16,16 +16,27 @@ export function ViewerControl({ snap }: { snap: Snapshot }) {
 
   const switchTo = viewAs;
   if (switchTo) {
-    const accounts = team.employees.filter((e) => e.access);
+    const people = team.employees.filter((e) => e.access);
+    const groups: [string, typeof people][] = [
+      ['Directors', people.filter((e) => e.access === 'director')],
+      ['Managers', people.filter((e) => e.access === 'manager')],
+      ...DEPARTMENTS.map((d): [string, typeof people] => [`Staff · ${d.name}`, people.filter((e) => e.access === 'employee' && e.departmentId === d.id)]),
+    ];
     return (
       <label className="viewer">
         <span className="sub">View as</span>
         <select value={viewer.id} onChange={(e) => switchTo(e.target.value)}>
-          {accounts.map((e) => (
-            <option key={e.id} value={e.id}>
-              {e.name} · {e.access === 'director' ? ROLE_LABEL.director : `${ROLE_LABEL.manager}, ${where(e.departmentId)}`}
-            </option>
-          ))}
+          {groups
+            .filter(([, list]) => list.length)
+            .map(([label, list]) => (
+              <optgroup key={label} label={label}>
+                {list.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name} · {e.access === 'director' ? ROLE_LABEL.director : e.access === 'manager' ? `${ROLE_LABEL.manager}, ${where(e.departmentId)}` : e.role}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
         </select>
       </label>
     );
@@ -37,7 +48,7 @@ export function ViewerControl({ snap }: { snap: Snapshot }) {
         <b>{me?.name ?? viewer.id}</b>
         <span className="sub">
           {ROLE_LABEL[viewer.role]}
-          {viewer.role === 'manager' && `, ${where(viewer.departmentId)}`}
+          {viewer.role !== 'director' && `, ${where(viewer.departmentId)}`}
         </span>
       </span>
       <button className="btn" type="button" onClick={() => signOut.mutate()} disabled={signOut.isPending}>

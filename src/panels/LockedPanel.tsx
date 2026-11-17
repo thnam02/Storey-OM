@@ -25,15 +25,28 @@ export function LockedPanel({ dept }: { dept: Department }) {
         </div>
       </div>
       <div className="pb">
-        <div className="note">
-          {own ? `As a manager you can open ${own.name}. ` : ''}Only directors can open other departments' teams, tasks and records.
-        </div>
-        {own && (
-          <div>
-            <button className="btn primary" type="button" onClick={() => selectDept(own.id)}>
-              Open {own.name}
-            </button>
-          </div>
+        {viewer?.role === 'employee' ? (
+          <>
+            <div className="note">You can see your own desk and tasks. Managers see their department's team and records.</div>
+            <div>
+              <button className="btn primary" type="button" onClick={() => selectDept(null)}>
+                Back to my desk
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="note">
+              {own ? `As a manager you can open ${own.name}. ` : ''}Only directors can open other departments' teams, tasks and records.
+            </div>
+            {own && (
+              <div>
+                <button className="btn primary" type="button" onClick={() => selectDept(own.id)}>
+                  Open {own.name}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </>

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import type { Employee } from './data/types';
+import type { AppRole, Employee } from './data/types';
 import { WORKLOAD_STATE } from './data/workload';
 import { NoAccessCard, SignInCard } from './panels/account/SignIn';
 import { ViewerControl } from './panels/account/ViewerControl';
@@ -10,6 +10,7 @@ import { useHashSync } from './state/useHashSync';
 import { useUiStore } from './state/uiStore';
 
 const NO_EMPLOYEES: Employee[] = [];
+const VIEW_NAME: Record<AppRole, string> = { director: 'Director view', manager: 'Manager view', employee: 'My desk' };
 
 function Logo() {
   return (
@@ -72,7 +73,7 @@ export default function App() {
           <Logo />
           <div>
             <h1>Company HQ</h1>
-            <p>Storey · Manager view</p>
+            <p>Storey · {VIEW_NAME[snap?.viewer?.role ?? 'manager']}</p>
           </div>
         </div>
         {snap?.isSample && <span className="pill">Sample data</span>}
@@ -96,7 +97,7 @@ export default function App() {
         <SnapshotContext.Provider value={ready}>
           <main>
             <div className="stage">
-              <SiteCanvas data={ready.company} team={ready.team} />
+              <SiteCanvas data={ready.company} team={ready.team} viewer={ready.viewer} />
               <div className="hint">
                 {selected
                   ? 'Click a person to see their tasks · Drag to rotate · Scroll to zoom'

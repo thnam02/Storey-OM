@@ -47,7 +47,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   projects: [
-    { name: 'sample', testMatch: /sample\.spec\.ts/, use: { baseURL: 'http://localhost:5180' } },
+    { name: 'sample', testMatch: /(sample|employee)\.spec\.ts/, use: { baseURL: 'http://localhost:5180' } },
     { name: 'sign-in', testMatch: /signin\.spec\.ts/, use: { baseURL: 'http://localhost:5181' } },
     ...(sb ? [{ name: 'supabase', testMatch: /supabase\.spec\.ts/, use: { baseURL: 'http://localhost:5173' } }] : []),
   ],

@@ -1,15 +1,16 @@
 import { useCallback, type CSSProperties } from 'react';
 import type { Employee } from '../../data/types';
-import { shortName, WORKLOAD_STATE, type Workload } from '../../data/workload';
+import { ringColor, shortName, WORKLOAD_STATE, type Workload } from '../../data/workload';
 import { useUiStore } from '../../state/uiStore';
 import { figureRegistry } from '../people/figureRegistry';
 import { labelAnchors } from './labelAnchors';
 
 /**
  * Name tag above a person on the open floor: status ring colour, short name,
- * and a red count of overdue tasks. Follows the figure as it moves.
+ * and a red count of overdue tasks. Follows the figure as it moves. Without a
+ * workload (someone whose tasks the viewer can't see) the ring is neutral.
  */
-export function PersonTag({ person, workload }: { person: Employee; workload: Workload }) {
+export function PersonTag({ person, workload }: { person: Employee; workload: Workload | undefined }) {
   const selected = useUiStore((s) => s.selectedEmployeeId === person.id);
   const hovered = useUiStore((s) => s.hoveredEmployeeId === person.id);
   const { selectEmployee, hoverEmployee } = useUiStore.getState();
@@ -37,14 +38,15 @@ export function PersonTag({ person, workload }: { person: Employee; workload: Wo
     [person.id],
   );
 
-  const state = WORKLOAD_STATE[workload.state];
+  const state = workload ? WORKLOAD_STATE[workload.state] : null;
+  const late = workload?.late ?? 0;
   return (
     <button
       ref={register}
       type="button"
       className={`etag${hovered ? ' hot' : ''}${selected ? ' active' : ''}`}
-      style={{ '--w': state.color } as CSSProperties}
-      aria-label={`${person.name}, ${person.role}. ${state.label}${workload.late ? `, ${workload.late} overdue` : ''}`}
+      style={{ '--w': ringColor(workload) } as CSSProperties}
+      aria-label={`${person.name}, ${person.role}.${state ? ` ${state.label}${late ? `, ${late} overdue` : ''}` : ''}`}
       aria-pressed={selected}
       onClick={() => selectEmployee(person.id, person.departmentId)}
       onPointerEnter={() => hoverEmployee(person.id)}
@@ -54,7 +56,7 @@ export function PersonTag({ person, workload }: { person: Employee; workload: Wo
     >
       <span className="ring" />
       {shortName(person.name)}
-      {workload.late > 0 && <span className="late">{workload.late}</span>}
+      {late > 0 && <span className="late">{late}</span>}
     </button>
   );
 }

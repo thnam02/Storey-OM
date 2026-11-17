@@ -79,7 +79,31 @@ test('a director decides approvals', async ({ page }) => {
   await signOut(page);
 });
 
-test('an account that is not a manager or director sees nothing', async ({ page }) => {
+test('an employee signs in to their desk and changes only their own tasks', async ({ page }) => {
+  await signIn(page, 'huong.le@storey.example');
+  await expect(header(page).locator('.viewer')).toContainText('Huong Le');
+  await expect(header(page)).toContainText('My desk');
+  await expect(panel(page).locator('.crumbs')).toHaveText('My desk');
+
+  // Mark one of their open tasks done, check it is saved, then reopen it.
+  const title = (await panel(page).locator('.task:not(.done) .t').first().textContent())!;
+  await taskCard(page, title).getByRole('button', { name: 'Mark done' }).click();
+  await expect(flash(page)).toHaveText(`Marked “${title}” done.`);
+  await page.reload();
+  await expect(panel(page).locator('.task.done', { hasText: title })).toBeVisible();
+  await taskCard(page, title).getByRole('button', { name: 'Reopen' }).click();
+  await expect(flash(page)).toHaveText(`Reopened “${title}”.`);
+
+  // The database returns no one else's tasks and no department records.
+  await page.goto('/#p-minh-tran');
+  await expect(panel(page).getByText("Only managers and directors see other people's tasks.")).toBeVisible();
+  await expect(panel(page).locator('.task')).toHaveCount(0);
+  await page.goto('/#finance');
+  await expect(panel(page).getByText('You can see your own desk and tasks.')).toBeVisible();
+  await signOut(page);
+});
+
+test('an account that is not in the company sees nothing', async ({ page }) => {
   await signIn(page, 'stranger@elsewhere.example', { hasAccess: false });
   await expect(page.getByRole('heading', { name: "This account isn't set up for Storey" })).toBeVisible();
   await page.getByRole('button', { name: 'Sign out' }).click();

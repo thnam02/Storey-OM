@@ -16,7 +16,8 @@ export function PanelShell() {
   const personId = useUiStore((s) => s.selectedEmployeeId);
   const tab = useUiStore((s) => s.deptTab);
   const locked = useUiStore((s) => s.lockedDeptId);
-  const employees = useSnapshot().team.employees;
+  const { team, viewer } = useSnapshot();
+  const employees = team.employees;
   const person = personId ? employees.find((e) => e.id === personId) : undefined;
   const ref = useRef<HTMLElement>(null);
 
@@ -29,6 +30,9 @@ export function PanelShell() {
     <aside className="panel" aria-live="polite" ref={ref}>
       {person ? (
         <PersonView key={person.id} person={person} />
+      ) : viewer?.role === 'employee' && !locked ? (
+        // An employee's home is their own desk, whatever floor is open.
+        <PersonView key={viewer.id} person={employees.find((e) => e.id === viewer.id)!} />
       ) : deptId ? (
         <DepartmentPanel dept={departmentById[deptId]} />
       ) : locked ? (

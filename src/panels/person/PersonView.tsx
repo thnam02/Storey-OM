@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { canSee } from '../../data/access';
+import { canSeeTasksOf, managesOthers } from '../../data/access';
 import { involves } from '../../data/activity';
 import { loadOf, teamWorkload } from '../../data/metrics';
 import { firstName, presenceLabel, presenceTone } from '../../data/people';
@@ -26,7 +26,10 @@ export function PersonView({ person }: { person: Employee }) {
   const [msgOpen, setMsgOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [delegating, setDelegating] = useState<string | null>(null);
-  const canEdit = canSee(viewer, person.departmentId);
+  // Employees see their own tasks only; managers and directors their departments'.
+  const canEdit = canSeeTasksOf(viewer, person);
+  const isMe = viewer?.id === person.id;
+  const isEmployee = viewer?.role === 'employee';
 
   const d = departmentById[person.departmentId];
   const load = teamWorkload(team);
@@ -56,7 +59,7 @@ export function PersonView({ person }: { person: Employee }) {
       viewerId={viewer?.id ?? null}
       canEdit={canEdit}
       nameOf={nameOf}
-      targets={delegateTargets(team, t).map((p) => ({ person: p, workload: loadOf(load, p.id) }))}
+      targets={managesOthers(viewer) ? delegateTargets(team, t).map((p) => ({ person: p, workload: loadOf(load, p.id) })) : []}
       delegating={delegating === t.id}
       onStartDelegate={() => {
         setDelegating(t.id);
@@ -81,11 +84,17 @@ export function PersonView({ person }: { person: Employee }) {
     <>
       <div className="ph" style={accent(d.color)}>
         <Crumbs
-          parts={[
-            { label: 'Company HQ', onClick: () => selectDept(null) },
-            { label: d.name, onClick: () => selectDept(d.id) },
-            { label: person.name },
-          ]}
+          parts={
+            isEmployee
+              ? isMe
+                ? [{ label: 'My desk' }]
+                : [{ label: 'My desk', onClick: () => selectDept(null) }, { label: person.name }]
+              : [
+                  { label: 'Company HQ', onClick: () => selectDept(null) },
+                  { label: d.name, onClick: () => selectDept(d.id) },
+                  { label: person.name },
+                ]
+          }
         />
         <div className="row1">
           <div>
@@ -97,15 +106,17 @@ export function PersonView({ person }: { person: Employee }) {
               {person.role} · {d.name}
             </div>
           </div>
-          <div className="acts">
-            <button className="btn sm" type="button" aria-expanded={msgOpen} onClick={() => setMsgOpen((o) => !o)}>
-              Message
-            </button>
-          </div>
+          {!isMe && (
+            <div className="acts">
+              <button className="btn sm" type="button" aria-expanded={msgOpen} onClick={() => setMsgOpen((o) => !o)}>
+                Message
+              </button>
+            </div>
+          )}
         </div>
         <div className="status">
           <Chip tone={presenceTone(person)}>{presenceLabel(person)}</Chip>
-          <Chip tone={state.tone}>{state.label}</Chip>
+          {canEdit && <Chip tone={state.tone}>{state.label}</Chip>}
         </div>
       </div>
       <div className="pb" style={accent(d.color)}>
@@ -118,34 +129,36 @@ export function PersonView({ person }: { person: Employee }) {
         <div role="status" className={flash ? 'note msg' : undefined} hidden={!flash}>
           {flash}
         </div>
-        <div className="kpis four">
-          <Kpi k="In progress" v={w.doing} />
-          <Kpi k="To do" v={w.todo} />
-          <Kpi k="Overdue" v={w.late} late={w.late > 0} />
-          <Kpi k="Done this week" v={w.doneThisWeek} />
-        </div>
-        <div className="load" title="Task mix: in progress, to do, done">
-          <i style={{ width: `${(w.doing / total) * 100}%`, background: d.color }} />
-          <i style={{ width: `${(w.todo / total) * 100}%`, background: '#c7d1d7' }} />
-          <i style={{ width: `${((total - w.open) / total) * 100}%`, background: '#e3e9ec' }} />
-        </div>
         {canEdit ? (
-          <Section title={`Assign a task to ${first}`}>
-            <AssignForm
-              person={person}
-              onDone={(message) => {
-                setDelegating(null);
-                setFlash(message);
-              }}
-            />
-          </Section>
+          <>
+            <div className="kpis four">
+              <Kpi k="In progress" v={w.doing} />
+              <Kpi k="To do" v={w.todo} />
+              <Kpi k="Overdue" v={w.late} late={w.late > 0} />
+              <Kpi k="Done this week" v={w.doneThisWeek} />
+            </div>
+            <div className="load" title="Task mix: in progress, to do, done">
+              <i style={{ width: `${(w.doing / total) * 100}%`, background: d.color }} />
+              <i style={{ width: `${(w.todo / total) * 100}%`, background: '#c7d1d7' }} />
+              <i style={{ width: `${((total - w.open) / total) * 100}%`, background: '#e3e9ec' }} />
+            </div>
+            <Section title={isMe ? 'Add a to-do for yourself' : `Assign a task to ${first}`}>
+              <AssignForm
+                person={person}
+                onDone={(message) => {
+                  setDelegating(null);
+                  setFlash(message);
+                }}
+              />
+            </Section>
+            {group('In progress', doing, 'Nothing in progress.')}
+            {group('To do', todo, 'Nothing waiting.')}
+            {group('Done', done, 'Nothing finished yet.')}
+            <ActivityFeed entries={activity.filter((e) => involves(e, person.id))} limit={5} />
+          </>
         ) : (
-          <div className="note">Sign in to assign, delegate or complete tasks.</div>
+          <div className="note">Only managers and directors see other people's tasks.</div>
         )}
-        {group('In progress', doing, 'Nothing in progress.')}
-        {group('To do', todo, 'Nothing waiting.')}
-        {group('Done', done, 'Nothing finished yet.')}
-        <ActivityFeed entries={activity.filter((e) => involves(e, person.id))} limit={5} />
       </div>
     </>
   );
