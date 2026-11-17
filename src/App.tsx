@@ -16,12 +16,12 @@ function Logo() {
 }
 
 export default function App() {
-  useHashSync();
   const selected = useUiStore((s) => s.selectedDeptId);
   const autoRotate = useUiStore((s) => s.autoRotate);
   const { selectDept, resetCamera, toggleAutoRotate } = useUiStore.getState();
   const data = SAMPLE_DATA;
   const team = SAMPLE_TEAM;
+  useHashSync(team.employees);
 
   return (
     <>
