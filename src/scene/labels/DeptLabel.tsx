@@ -1,0 +1,64 @@
+import { useCallback, type CSSProperties } from 'react';
+import type { Department } from '../../data/types';
+import { useUiStore } from '../../state/uiStore';
+import { buildingView } from '../constants';
+import { labelAnchors } from './labelAnchors';
+
+interface Props {
+  dept: Department;
+  /** Shows the yellow "!" when the department needs attention. */
+  flagged: boolean;
+}
+
+/**
+ * Pill label beside a floor or above the warehouse. It is a real DOM button
+ * (keyboard reachable); LabelProjector keeps it pinned to its 3D anchor.
+ * Hidden while a department is open.
+ */
+export function DeptLabel({ dept, flagged }: Props) {
+  const selected = useUiStore((s) => s.selectedDeptId);
+  const hovered = useUiStore((s) => s.hoveredDeptId === dept.id);
+  const { selectDept, hoverDept } = useUiStore.getState();
+
+  const register = useCallback(
+    (el: HTMLButtonElement | null) => {
+      if (!el) return;
+      const view = buildingView(dept.id, dept.level);
+      el.style.visibility = 'hidden'; // until the first projection
+      labelAnchors.set(dept.id, { el, position: view.labelAnchor, align: view.labelAlign });
+      return () => {
+        labelAnchors.delete(dept.id);
+      };
+    },
+    [dept.id, dept.level],
+  );
+
+  if (selected) return null;
+
+  return (
+    <button
+      ref={register}
+      type="button"
+      className={`tag${hovered ? ' hot' : ''}`}
+      style={{ '--c': dept.color } as CSSProperties}
+      onClick={() => {
+        hoverDept(null);
+        selectDept(dept.id);
+      }}
+      onPointerEnter={() => hoverDept(dept.id)}
+      onPointerLeave={() => hoverDept(null)}
+      onFocus={() => hoverDept(dept.id)}
+      onBlur={() => hoverDept(null)}
+      aria-label={`Open ${dept.name}${dept.level ? `, level ${dept.level}` : ''}${flagged ? ', needs attention' : ''}`}
+    >
+      <span className="dot" />
+      <span>{dept.name}</span>
+      {dept.level > 0 && <span className="lvl">L{dept.level}</span>}
+      {flagged && (
+        <span className="flag" aria-hidden="true">
+          !
+        </span>
+      )}
+    </button>
+  );
+}
