@@ -5,7 +5,7 @@ import { NoAccessCard, SignInCard } from './panels/account/SignIn';
 import { ViewerControl } from './panels/account/ViewerControl';
 import { PanelShell } from './panels/PanelShell';
 import { SiteCanvas } from './scene/SiteCanvas';
-import { useAccountQuery, useSnapshotQuery } from './state/serverData';
+import { SnapshotContext, useAccountQuery, useSnapshotQuery } from './state/serverData';
 import { useHashSync } from './state/useHashSync';
 import { useUiStore } from './state/uiStore';
 
@@ -93,27 +93,29 @@ export default function App() {
         )}
       </header>
       {ready ? (
-        <main>
-          <div className="stage">
-            <SiteCanvas data={ready.company} team={ready.team} />
-            <div className="hint">
-              {selected
-                ? 'Click a person to see their tasks · Drag to rotate · Scroll to zoom'
-                : 'Drag to rotate · Right-drag to pan · Scroll to zoom · Click a floor or the warehouse'}
-            </div>
-            {selected && (
-              <div className="legend" aria-hidden="true">
-                {(['ok', 'busy', 'late'] as const).map((k) => (
-                  <span key={k}>
-                    <i style={{ '--w': WORKLOAD_STATE[k].color } as CSSProperties} />
-                    {k === 'late' ? 'Overdue tasks' : WORKLOAD_STATE[k].label}
-                  </span>
-                ))}
+        <SnapshotContext.Provider value={ready}>
+          <main>
+            <div className="stage">
+              <SiteCanvas data={ready.company} team={ready.team} />
+              <div className="hint">
+                {selected
+                  ? 'Click a person to see their tasks · Drag to rotate · Scroll to zoom'
+                  : 'Drag to rotate · Right-drag to pan · Scroll to zoom · Click a floor or the warehouse'}
               </div>
-            )}
-          </div>
-          <PanelShell />
-        </main>
+              {selected && (
+                <div className="legend" aria-hidden="true">
+                  {(['ok', 'busy', 'late'] as const).map((k) => (
+                    <span key={k}>
+                      <i style={{ '--w': WORKLOAD_STATE[k].color } as CSSProperties} />
+                      {k === 'late' ? 'Overdue tasks' : WORKLOAD_STATE[k].label}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            <PanelShell />
+          </main>
+        </SnapshotContext.Provider>
       ) : (
         <Gate>{gate}</Gate>
       )}

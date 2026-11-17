@@ -1,5 +1,5 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import { visibleDepartments } from '../data/access';
 import { applyAction } from '../data/source/applyAction';
 import { createDataSource, type Action, type Snapshot } from '../data/source';
@@ -62,11 +62,17 @@ export function useAccountQuery() {
 
 export const useSnapshotQuery = (enabled = true) => useQuery({ queryKey: SNAPSHOT, queryFn: loadSnapshot, enabled });
 
-/** The loaded snapshot. Only for components rendered after it has loaded. */
+/**
+ * The snapshot App is showing, passed down by context so panels always agree
+ * with App, even while sign-out clears the cache.
+ */
+export const SnapshotContext = createContext<Snapshot | null>(null);
+
+/** The loaded snapshot. Only for components rendered inside SnapshotContext. */
 export function useSnapshot(): Snapshot {
-  const { data } = useQuery({ queryKey: SNAPSHOT, queryFn: loadSnapshot, enabled: false });
-  if (!data) throw new Error('useSnapshot() used before the company data loaded');
-  return data;
+  const snap = useContext(SnapshotContext);
+  if (!snap) throw new Error('useSnapshot() used outside the loaded company view');
+  return snap;
 }
 
 /** Email a sign-in link. */
@@ -77,9 +83,10 @@ export function useSignOut() {
   return useMutation({
     mutationFn: () => source.signOut(),
     onSuccess: () => {
-      useUiStore.getState().selectDept(null);
+      // Signed out first, so the app swaps to the sign-in screen before the data goes.
+      qc.setQueryData(ACCOUNT, null);
       qc.removeQueries({ queryKey: SNAPSHOT });
-      void qc.invalidateQueries({ queryKey: ACCOUNT });
+      useUiStore.getState().selectDept(null);
     },
   });
 }
