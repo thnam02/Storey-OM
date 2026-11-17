@@ -3,9 +3,8 @@
  * in WebAssembly) and checks that what the database derives matches the
  * sample data the app shows.
  */
-import { PGlite } from '@electric-sql/pglite';
-import { readdirSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import type { PGlite } from '@electric-sql/pglite';
+import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { revenueThisYear } from '../src/data/metrics';
 import { SAMPLE_DATA } from '../src/data/sample';
@@ -13,8 +12,7 @@ import { SAMPLE_TEAM } from '../src/data/sampleTeam';
 import { workloadByEmployee } from '../src/data/workload';
 import { buildSeed } from './seed/buildSeed';
 import { renderSeed, SEED_PATH } from './seed/generate';
-
-const MIGRATIONS = fileURLToPath(new URL('../supabase/migrations/', import.meta.url));
+import { attempt as attemptIn, createSeededDb } from './testDb';
 
 let db: PGlite;
 const seed = buildSeed();
@@ -23,25 +21,10 @@ const rows = async <T,>(sql: string, params: unknown[] = []) => (await db.query<
 const one = async <T,>(sql: string, params: unknown[] = []) => (await rows<T>(sql, params))[0]!;
 const num = (v: unknown) => Number(v);
 
-/** Run statements in a transaction that is always rolled back; resolves to the error, if any. */
-async function attempt(sql: string, params: unknown[] = []): Promise<Error | null> {
-  await db.exec('begin');
-  try {
-    await db.query(sql, params);
-    return null;
-  } catch (e) {
-    return e as Error;
-  } finally {
-    await db.exec('rollback');
-  }
-}
+const attempt = (sql: string, params: unknown[] = []) => attemptIn(db, sql, params);
 
 beforeAll(async () => {
-  db = new PGlite();
-  for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
-    await db.exec(readFileSync(MIGRATIONS + file, 'utf8'));
-  }
-  await db.exec(readFileSync(SEED_PATH, 'utf8'));
+  db = await createSeededDb();
 }, 60_000);
 
 afterAll(async () => {

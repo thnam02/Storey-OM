@@ -8,7 +8,7 @@
  * output is identical every run) to make the totals come out the same.
  */
 import { DEPARTMENTS, SAMPLE_DATA } from '../../src/data/sample';
-import { SAMPLE_CUSTOMERS, SAMPLE_EMPLOYEES, SAMPLE_TASKS, SAMPLE_TODAY } from '../../src/data/sampleTeam';
+import { SAMPLE_CUSTOMERS, SAMPLE_EMPLOYEES, SAMPLE_TASKS, SAMPLE_TODAY, SAMPLE_VIEWER_ID } from '../../src/data/sampleTeam';
 import type { Employee, LinkedRecord } from '../../src/data/types';
 import { shortName } from '../../src/data/workload';
 import { addDays, parseDayMonth } from '../../src/lib/dates';
@@ -80,9 +80,10 @@ export function buildSeed(): Seed {
     { key: 'today', value: TODAY },
     { key: 'timezone', value: 'Australia/Sydney' },
     { key: 'currency', value: 'AUD' },
+    { key: 'viewer', value: SAMPLE_VIEWER_ID },
   ];
   const departments: Row[] = DEPARTMENTS.map((d) => ({ id: d.id, name: d.name, color: d.color, building: d.building, level: d.level }));
-  const employees: Row[] = SAMPLE_EMPLOYEES.map((e: Employee) => ({
+  const employees: Row[] = SAMPLE_EMPLOYEES.map((e: Employee, i) => ({
     id: employeeId(e.id),
     slug: e.id,
     department_id: e.departmentId,
@@ -91,6 +92,7 @@ export function buildSeed(): Seed {
     presence: e.presence,
     activity: e.activity ?? null,
     is_manager: e.isManager,
+    list_order: i,
   }));
   const customerRows: Row[] = customers.map((name) => ({ id: customerId(name), name }));
 
