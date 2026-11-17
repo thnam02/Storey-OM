@@ -118,11 +118,14 @@ describe('sign-in and roles', () => {
   };
   const count = async (rel: string) => Number((await one<{ n: string }>(`select count(*)::text n from ${rel}`)).n);
 
-  it('shows nothing and allows nothing without a signed-in manager', async () => {
+  it('shows nothing and allows nothing without a signed-in person who has access', async () => {
+    // Everyone in the sample has access; take it away from one person.
+    await db.exec('reset role');
+    await db.query(`update employees set access = null where slug = 'quang-vo'`);
     const nobody = [
       () => signInAs(db, null),
       () => signInAs(db, sampleEmail('rachel-tan'), { confirmed: false }),
-      () => signInAs(db, sampleEmail('huong-le')),
+      () => signInAs(db, sampleEmail('quang-vo')),
       () => signInAs(db, 'someone@elsewhere.example'),
     ];
     for (const signIn of nobody) {
@@ -184,6 +187,39 @@ describe('sign-in and roles', () => {
     expect((await log()).map((l) => l.actor_slug)).toEqual(['daniel-reid']);
     await signInAs(db, sampleEmail('thao-nguyen'));
     expect((await log()).map((l) => l.actor_slug)).toEqual(['rachel-tan', 'daniel-reid']);
+  });
+
+  it('lets an employee see and change only their own tasks', async () => {
+    await signInAs(db, sampleEmail('huong-le'));
+    expect(await one('select * from me')).toEqual({ slug: 'huong-le', access: 'employee', department_id: 'sales' });
+    const owners = (await db.query<{ slug: string }>('select distinct assignee_slug slug from task_list')).rows;
+    expect(owners).toEqual([{ slug: 'huong-le' }]);
+    expect(await count('employees')).toBe(SAMPLE_TEAM.employees.length);
+    expect(await count('goals')).toBeGreaterThan(0);
+    for (const rel of ['deals', 'invoices', 'campaigns', 'shipments', 'products', 'approvals', 'company_figures']) expect(await count(rel)).toBe(0);
+
+    await db.query('select complete_task($1)', [openTaskOf('huong-le')]);
+    await db.query(`select assign_task($1, 'Prepare demo kit', '2026-11-19')`, [emp('huong-le')]);
+    await expectRefused('select complete_task($1)', [openTaskOf('minh-tran')], /only change your own tasks/);
+    await expectRefused(`select assign_task($1, 'x', '2026-11-19')`, [emp('minh-tran')], /only add tasks for yourself/);
+    await expectRefused('select delegate_task($1, $2)', [openTaskOf('huong-le'), emp('minh-tran')], /Only managers can delegate/);
+    expect((await log()).map((l) => `${l.action} ${l.actor_slug} ${l.assignee_slug}`)).toEqual(['complete huong-le huong-le', 'assign huong-le huong-le']);
+  });
+
+  it('refuses approvals to employees', async () => {
+    await db.exec('reset role');
+    const id = (await one<{ id: string }>('select id from approvals limit 1')).id;
+    await signInAs(db, sampleEmail('huong-le'));
+    await expectRefused(`select decide_approval($1, 'approved')`, [id], /Only directors/);
+  });
+
+  it("shows a manager their employees' own to-dos, and lets them delegate", async () => {
+    await signInAs(db, sampleEmail('huong-le'));
+    await db.query(`select assign_task($1, 'Prepare demo kit', '2026-11-19')`, [emp('huong-le')]);
+    await signInAs(db, sampleEmail('daniel-reid'));
+    const t = await one<{ id: string }>(`select id from task_list where title = 'Prepare demo kit'`);
+    await db.query('select delegate_task($1, $2)', [t.id, emp('minh-tran')]);
+    expect((await log()).map((l) => `${l.action} ${l.actor_slug}`)).toEqual(['assign huong-le', 'delegate daniel-reid']);
   });
 
   it('blocks direct writes: changes go through the functions', async () => {

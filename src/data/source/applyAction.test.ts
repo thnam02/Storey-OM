@@ -63,7 +63,20 @@ describe('applyAction', () => {
     expect(() => applyAction(rachel, { type: 'complete', taskId: huongs.id }, ctx)).toThrow(/your own department/);
     expect(() => applyAction(rachel, { type: 'assign', assigneeId: 'huong-le', title: 'x', dueDate: '2026-11-18' }, ctx)).toThrow(/your own department/);
     expect(() => applyAction(rachel, { type: 'decide', approvalId: 'a2', state: 'approved' }, ctx)).toThrow(/Only directors/);
-    expect(as('huong-le')).toBeNull();
+  });
+
+  it('lets an employee change only their own tasks, as the database does', () => {
+    const huong = { ...base, viewer: as('huong-le') };
+    const mine = SAMPLE_TEAM.tasks.find((t) => t.assigneeId === 'huong-le' && t.status !== 'done')!;
+    const minhs = SAMPLE_TEAM.tasks.find((t) => t.assigneeId === 'minh-tran' && t.status !== 'done')!;
+    expect(applyAction(huong, { type: 'complete', taskId: mine.id }, ctx).activity).toHaveLength(1);
+    const added = applyAction(huong, { type: 'assign', assigneeId: 'huong-le', title: 'Prepare demo kit', dueDate: '2026-11-19' }, ctx);
+    expect(say(added)).toEqual(['You added “Prepare demo kit” to your to-dos.']);
+    expect(describeActivity(added.activity[0]!, (id) => names.get(id) ?? id, 'daniel-reid')).toBe('Huong Le added “Prepare demo kit” to their to-dos.');
+    expect(() => applyAction(huong, { type: 'complete', taskId: minhs.id }, ctx)).toThrow(/only change your own tasks/);
+    expect(() => applyAction(huong, { type: 'assign', assigneeId: 'minh-tran', title: 'x', dueDate: '2026-11-19' }, ctx)).toThrow(/only add tasks for yourself/);
+    expect(() => applyAction(huong, { type: 'delegate', taskId: mine.id, toId: 'minh-tran' }, ctx)).toThrow(/Only managers can delegate/);
+    expect(() => applyAction(huong, { type: 'decide', approvalId: 'a2', state: 'approved' }, ctx)).toThrow(/Only directors/);
   });
 });
 
@@ -85,7 +98,10 @@ describe('data sources', () => {
     const depts = new Set(s.team.tasks.map((t) => s.team.employees.find((e) => e.id === t.assigneeId)!.departmentId));
     expect([...depts]).toEqual(['sales']);
     expect(s.company.finance.invoices).toEqual([]);
-    expect(() => src.viewAs!('huong-le')).toThrow(/no access/);
+    src.viewAs!('huong-le');
+    const mine = await src.load();
+    expect([mine.viewer?.role, new Set(mine.team.tasks.map((t) => t.assigneeId))]).toEqual(['employee', new Set(['huong-le'])]);
+    expect(() => src.viewAs!('nobody')).toThrow(/no access/);
   });
 
   it('keeps sample changes until reload and rejects refused ones', async () => {

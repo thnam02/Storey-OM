@@ -1,6 +1,6 @@
 import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect } from 'react';
-import { visibleDepartments } from '../data/access';
+import { openableDepartments } from '../data/access';
 import { applyAction } from '../data/source/applyAction';
 import { createDataSource, type Action, type Snapshot } from '../data/source';
 import { nowOnDay } from '../lib/zonedTime';
@@ -32,7 +32,7 @@ async function loadSnapshot(): Promise<Snapshot> {
     hashApplied = true;
   }
   // After the hash, so a link to a department the viewer can't open shows the locked notice.
-  useUiStore.getState().setOpenable(visibleDepartments(snap.viewer));
+  useUiStore.getState().setOpenable(openableDepartments(snap.viewer));
   return snap;
 }
 

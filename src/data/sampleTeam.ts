@@ -85,11 +85,15 @@ const TEMPLATES: Record<DepartmentId, string[]> = {
 };
 const PORTS = ['Auckland', 'Singapore', 'Ho Chi Minh City', 'Osaka', 'Los Angeles'];
 
-/** Sample app access: department heads manage their department; the managing, operations and finance directors see everything. */
+/**
+ * Sample app access: department heads manage their department; the managing,
+ * operations and finance directors see everything; everyone else uses the
+ * employee view (their own desk and tasks).
+ */
 const DIRECTORS = ['Thao Nguyen', 'Andrew Walsh'];
-function accessOf(dept: DepartmentId, name: string, isHead: boolean): AppRole | null {
+function accessOf(dept: DepartmentId, name: string, isHead: boolean): AppRole {
   if (isHead) return dept === 'management' ? 'director' : 'manager';
-  return DIRECTORS.includes(name) ? 'director' : null;
+  return DIRECTORS.includes(name) ? 'director' : 'employee';
 }
 
 /** Sample work email for a person, e.g. sam.o.brien@storey.example (a reserved domain, so nothing is ever delivered). */
@@ -150,7 +154,7 @@ function buildTeam() {
       employees.push({ id: slug(name), departmentId: dept, name, role, presence, isManager: i === 0, access: accessOf(dept, name, i === 0), ...(activity ? { activity } : {}) });
     });
     (cfg.offShift ?? []).forEach(([name, role]) =>
-      employees.push({ id: slug(name), departmentId: dept, name, role, presence: 'off_shift', isManager: false, access: null }),
+      employees.push({ id: slug(name), departmentId: dept, name, role, presence: 'off_shift', isManager: false, access: 'employee' }),
     );
   });
 

@@ -1,4 +1,4 @@
-import { canDecideApprovals, canSee } from '../access';
+import { canDecideApprovals, canSee, managesOthers } from '../access';
 import type { ActivityEntry } from '../activity';
 import { assignTask, completeTask, delegateTargets, delegateTask, reopenTask, setApprovalState } from '../taskOps';
 import type { Action, Snapshot } from './types';
@@ -28,9 +28,12 @@ export function applyAction(snap: Snapshot, action: Action, ctx: ActionContext):
     const person = team.employees.find((e) => e.id === personId);
     if (!person || !canSee(viewer, person.departmentId)) throw new Error('You can only manage tasks in your own department');
   };
+  // Everyone can change their own tasks; managers and directors also those in their departments.
   const findTask = (id: string) => {
     const task = team.tasks.find((t) => t.id === id);
     if (!task) throw new Error('Task not found');
+    if (task.assigneeId === viewer.id) return task;
+    if (!managesOthers(viewer)) throw new Error('You can only change your own tasks');
     requireDepartmentOf(task.assigneeId);
     return task;
   };
@@ -38,7 +41,10 @@ export function applyAction(snap: Snapshot, action: Action, ctx: ActionContext):
   switch (action.type) {
     case 'assign': {
       if (!team.employees.some((e) => e.id === action.assigneeId)) throw new Error('That person is not in the company');
-      requireDepartmentOf(action.assigneeId);
+      if (action.assigneeId !== viewer.id) {
+        if (!managesOthers(viewer)) throw new Error('You can only add tasks for yourself');
+        requireDepartmentOf(action.assigneeId);
+      }
       if (!action.title.trim()) throw new Error('Enter what needs doing');
       const r = assignTask(team, { assigneeId: action.assigneeId, title: action.title, dueDate: action.dueDate, createdById: viewer.id });
       if (!r.task) throw new Error('That person is not in the company');
@@ -49,6 +55,7 @@ export function applyAction(snap: Snapshot, action: Action, ctx: ActionContext):
       };
     }
     case 'delegate': {
+      if (!managesOthers(viewer)) throw new Error('Only managers can delegate tasks');
       const task = findTask(action.taskId);
       if (task.status === 'done') throw new Error('Only open tasks can be delegated');
       if (task.assigneeId === action.toId) throw new Error('The task is already with that person');

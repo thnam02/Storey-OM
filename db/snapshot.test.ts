@@ -65,8 +65,10 @@ describe('snapshot from the database', () => {
     ]);
   });
 
-  it('gives every manager and director what the app shows them without a database', async () => {
-    expect(ACCOUNTS).toHaveLength(8);
+  it('gives everyone what the app shows them without a database', async () => {
+    const roles = SAMPLE_TEAM.employees.map((e) => e.access);
+    expect([roles.filter((r) => r === 'director').length, roles.filter((r) => r === 'manager').length, roles.filter((r) => r === 'employee').length]).toEqual([3, 5, 56]);
+    expect(ACCOUNTS).toHaveLength(64);
     const sample = createSampleSource();
     for (const id of ACCOUNTS) {
       sample.viewAs!(id);
@@ -76,9 +78,13 @@ describe('snapshot from the database', () => {
       expect(taskKeys(fromDb.team.tasks), id).toEqual(taskKeys(inApp.team.tasks));
       expect(comparable(fromDb.company), id).toEqual(comparable(inApp.company));
     }
-    // A manager sees one department's tasks; the directors see them all.
-    expect(scopeSnapshot({ ...(await sample.load()), viewer: viewerOf(SAMPLE_TEAM.employees, 'rachel-tan') }).team.tasks.length).toBeLessThan(SAMPLE_TEAM.tasks.length);
-  });
+    // A manager sees one department's tasks; an employee only their own.
+    const whole: Snapshot = { company: SAMPLE_DATA, team: SAMPLE_TEAM, viewer: null, isSample: true, timezone: 'Australia/Sydney', activity: [] };
+    const tasksFor = (id: string) => scopeSnapshot({ ...whole, viewer: viewerOf(SAMPLE_TEAM.employees, id) }).team.tasks;
+    expect(tasksFor('rachel-tan').length).toBeLessThan(SAMPLE_TEAM.tasks.length);
+    expect(new Set(tasksFor('rachel-tan').map((t) => SAMPLE_TEAM.employees.find((e) => e.id === t.assigneeId)!.departmentId))).toEqual(new Set(['finance']));
+    expect(new Set(tasksFor('huong-le').map((t) => t.assigneeId))).toEqual(new Set(['huong-le']));
+  }, 60_000);
 
   it('lists the same people in the same order (so seating stays put)', async () => {
     expect((await readSnapshot()).team.employees).toEqual(SAMPLE_TEAM.employees);

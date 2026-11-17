@@ -148,8 +148,8 @@ export interface CompanyData {
 
 export type Presence = 'at_desk' | 'in_meeting' | 'away' | 'on_floor' | 'off_shift';
 
-/** App access: a director sees every department, a manager their own. */
-export type AppRole = 'director' | 'manager';
+/** App access: a director sees every department, a manager their own, an employee their own tasks. */
+export type AppRole = 'director' | 'manager' | 'employee';
 
 export interface Employee {
   id: string;

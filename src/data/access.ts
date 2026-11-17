@@ -1,9 +1,14 @@
 /**
  * Who sees what. Mirrors the database's row-level security
- * (supabase/migrations/*_auth_and_roles.sql): a director sees every
- * department, a manager their own. The staff directory and company goals are
- * open to both; tasks, activity and each department's records are not.
- * Import & Export and the Warehouse share shipments and stock.
+ * (supabase/migrations/*_auth_and_roles.sql and *_employee_view.sql):
+ *
+ *   director  every department, and decides approvals
+ *   manager   their own department
+ *   employee  their own tasks ("My desk")
+ *
+ * The staff directory and company goals are open to everyone signed in;
+ * tasks, activity and each department's records are not. Import & Export
+ * and the Warehouse share shipments and stock.
  */
 import { DEPARTMENTS } from './sample';
 import type { Snapshot } from './source/types';
@@ -25,20 +30,37 @@ export function viewerOf(employees: readonly Employee[], id: string | null): Vie
   return e?.access ? { id: e.id, role: e.access, departmentId: e.departmentId } : null;
 }
 
+/** Departments whose team, tasks and records the viewer sees. */
 export function visibleDepartments(viewer: Viewer | null): DepartmentId[] {
   if (!viewer) return [];
-  return viewer.role === 'director' ? ALL : [viewer.departmentId];
+  if (viewer.role === 'director') return ALL;
+  return viewer.role === 'manager' ? [viewer.departmentId] : [];
+}
+
+/**
+ * Floors the viewer can open in 3D. An employee opens their own floor to
+ * find their desk, but sees no one else's tasks there.
+ */
+export function openableDepartments(viewer: Viewer | null): DepartmentId[] {
+  return viewer?.role === 'employee' ? [viewer.departmentId] : visibleDepartments(viewer);
 }
 
 /** Whether the viewer can open a department: its team, tasks and workspace. */
 export const canSee = (viewer: Viewer | null, dept: DepartmentId) =>
-  !!viewer && (viewer.role === 'director' || viewer.departmentId === dept);
+  !!viewer && (viewer.role === 'director' || (viewer.role === 'manager' && viewer.departmentId === dept));
+
+/** Whether the viewer sees (and can change) this person's tasks. */
+export const canSeeTasksOf = (viewer: Viewer | null, person: Pick<Employee, 'id' | 'departmentId'>) =>
+  !!viewer && (viewer.id === person.id || canSee(viewer, person.departmentId));
+
+/** Managers and directors assign to others, delegate, and see teams. */
+export const managesOthers = (viewer: Viewer | null) => viewer?.role === 'director' || viewer?.role === 'manager';
 
 const seesAny = (viewer: Viewer | null, depts: readonly DepartmentId[]) => depts.some((d) => canSee(viewer, d));
 
 export const canDecideApprovals = (viewer: Viewer | null) => viewer?.role === 'director';
 
-export const ROLE_LABEL: Record<AppRole, string> = { director: 'Director', manager: 'Manager' };
+export const ROLE_LABEL: Record<AppRole, string> = { director: 'Director', manager: 'Manager', employee: 'Employee' };
 
 /**
  * What the viewer is allowed to see of the whole company: the same rows the
@@ -50,8 +72,8 @@ export function scopeSnapshot(full: Snapshot): Snapshot {
     return { ...full, company: EMPTY_COMPANY, team: { ...full.team, employees: [], tasks: [] }, activity: [] };
   }
   const c = full.company;
-  const deptOf = new Map(full.team.employees.map((e) => [e.id, e.departmentId]));
-  const tasks = full.team.tasks.filter((t) => canSee(v, deptOf.get(t.assigneeId)!));
+  const byId = new Map(full.team.employees.map((e) => [e.id, e]));
+  const tasks = full.team.tasks.filter((t) => canSeeTasksOf(v, byId.get(t.assigneeId)!));
   const approvals = c.management.approvals.filter((a) => seesAny(v, ['management', a.from]));
   const taskIds = new Set(tasks.map((t) => t.id));
   const approvalIds = new Set(approvals.map((a) => a.id));

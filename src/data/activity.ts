@@ -26,6 +26,8 @@ export function describeActivity(e: ActivityEntry, nameOf: (id: string) => strin
   const forWhom = e.assigneeId && e.assigneeId !== e.actorId ? ` for ${nameOf(e.assigneeId)}` : '';
   switch (e.action) {
     case 'assign':
+      // Someone's own to-do.
+      if (e.assigneeId && e.assigneeId === e.actorId) return `${who} added ${what} to ${who === 'You' ? 'your' : 'their'} to-dos.`;
       return `${who} assigned ${what} to ${e.assigneeId ? nameOf(e.assigneeId) : 'someone'}.`;
     case 'delegate':
       return `${who} delegated ${what} from ${e.fromId ? nameOf(e.fromId) : 'someone'} to ${e.toId ? nameOf(e.toId) : 'someone'}.`;
