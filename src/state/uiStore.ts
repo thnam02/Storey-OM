@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { DepartmentId } from '../data/types';
 
+export type DeptTab = 'team' | 'workspace';
+
 /**
  * UI state shared by the 3D layer and the panels. The 3D layer reads this and
  * calls the actions below; it never owns selection itself.
@@ -11,6 +13,8 @@ export interface UiState {
   selectedEmployeeId: string | null;
   hoveredDeptId: DepartmentId | null;
   hoveredEmployeeId: string | null;
+  /** Tab shown for an open department. Stays put when switching departments. */
+  deptTab: DeptTab;
   autoRotate: boolean;
   /** Bumped to ask the camera to fly back to the current view's default. */
   cameraResetTick: number;
@@ -21,6 +25,7 @@ export interface UiState {
   selectEmployee: (id: string, deptId: DepartmentId) => void;
   hoverDept: (id: DepartmentId | null) => void;
   hoverEmployee: (id: string | null) => void;
+  setDeptTab: (tab: DeptTab) => void;
   toggleAutoRotate: () => void;
   resetCamera: () => void;
 }
@@ -30,6 +35,7 @@ export const useUiStore = create<UiState>()((set) => ({
   selectedEmployeeId: null,
   hoveredDeptId: null,
   hoveredEmployeeId: null,
+  deptTab: 'team',
   autoRotate: false,
   cameraResetTick: 0,
 
@@ -39,6 +45,7 @@ export const useUiStore = create<UiState>()((set) => ({
     set((s) => (s.selectedEmployeeId === id ? s : { selectedDeptId: deptId, selectedEmployeeId: id })),
   hoverDept: (id) => set((s) => (s.hoveredDeptId === id ? s : { hoveredDeptId: id })),
   hoverEmployee: (id) => set((s) => (s.hoveredEmployeeId === id ? s : { hoveredEmployeeId: id })),
+  setDeptTab: (tab) => set({ deptTab: tab }),
   toggleAutoRotate: () => set((s) => ({ autoRotate: !s.autoRotate })),
   resetCamera: () => set((s) => ({ cameraResetTick: s.cameraResetTick + 1 })),
 }));

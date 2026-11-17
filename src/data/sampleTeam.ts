@@ -186,3 +186,6 @@ export const SAMPLE_TEAM: TeamData = {
   today: SAMPLE_TODAY,
   weekStart: SAMPLE_WEEK_START,
 };
+
+/** The manager using the app in the sample: Michael Chen, managing director. */
+export const SAMPLE_VIEWER_ID = 'michael-chen';

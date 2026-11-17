@@ -13,3 +13,12 @@ export function presenceLabel(e: Pick<Employee, 'presence' | 'activity'>): strin
   if (e.activity === 'forklift') return 'Driving forklift';
   return PRESENCE_LABEL[e.presence];
 }
+
+/** Chip tone for presence: muted when not around, blue in a meeting, green otherwise. */
+export function presenceTone(e: Pick<Employee, 'presence'>): 'ok' | 'info' | 'muted' {
+  if (e.presence === 'off_shift' || e.presence === 'away') return 'muted';
+  return e.presence === 'in_meeting' ? 'info' : 'ok';
+}
+
+/** "Linh Nguyen" → "Linh". */
+export const firstName = (name: string) => name.split(' ')[0] ?? name;
