@@ -1,11 +1,13 @@
 import { useMemo, type ReactNode } from 'react';
 import { departmentById, OFFICE_FLOORS } from '../../data/sample';
-import type { CompanyData, Department, DepartmentId, TeamData } from '../../data/types';
+import type { CompanyData, Department, DepartmentId, Employee } from '../../data/types';
+import type { Workload } from '../../data/workload';
 import type { OfficeDepartmentId } from '../../layout/floorLayout';
 import { sum } from '../../lib/format';
 import { useUiStore } from '../../state/uiStore';
 import { floorY, OFFICE } from '../constants';
 import { BuildingHitArea } from '../interaction/BuildingHitArea';
+import { OfficePeople } from '../people/OfficePeople';
 import { FinanceDecor } from './decor/FinanceDecor';
 import { ImportExportDecor } from './decor/ImportExportDecor';
 import { ManagementDecor } from './decor/ManagementDecor';
@@ -43,9 +45,22 @@ function openLevel(selected: DepartmentId | null) {
  * furniture are generated from each floor's headcount. When a floor is open,
  * the floors above it and the roof are hidden so it can be seen from above.
  */
-export function OfficeBuilding({ data, team }: { data: CompanyData; team: TeamData }) {
-  const level = useUiStore((s) => openLevel(s.selectedDeptId));
-  const plans = useMemo(() => buildFloorPlans(team.employees), [team.employees]);
+interface Props {
+  data: CompanyData;
+  employees: Employee[];
+  load: Map<string, Workload>;
+  animate: boolean;
+}
+
+export function OfficeBuilding({ data, employees, load, animate }: Props) {
+  const selected = useUiStore((s) => s.selectedDeptId);
+  const level = openLevel(selected);
+  const plans = useMemo(() => buildFloorPlans(employees), [employees]);
+  const teams = useMemo(() => {
+    const m = new Map<DepartmentId, Employee[]>();
+    employees.forEach((e) => m.set(e.departmentId, [...(m.get(e.departmentId) ?? []), e]));
+    return m;
+  }, [employees]);
   return (
     <>
       {OFFICE_FLOORS.map((dept) => {
@@ -56,6 +71,9 @@ export function OfficeBuilding({ data, team }: { data: CompanyData; team: TeamDa
             <FloorShell dept={dept} />
             {decorFor(dept, data)}
             {plan && <GeneratedFurniture layout={plan.layout} />}
+            {plan && (
+              <OfficePeople dept={dept} plan={plan} team={teams.get(dept.id) ?? []} load={load} open={selected === dept.id} animate={animate} />
+            )}
             {visible && (
               <BuildingHitArea
                 id={dept.id}

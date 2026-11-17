@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { createRandom } from '../../lib/seededRandom';
 import { FLOOR_Y } from '../constants';
-import { carton, cylinderGeometry, icosahedronGeometry, M, mat, sphereGeometry, tint } from '../materials';
+import { carton, cylinderGeometry, icosahedronGeometry, M } from '../materials';
 import { Box, Part } from './primitives';
 
 /** Desk with monitor and chair. The chair faces +z before rotation. */
@@ -74,17 +74,6 @@ export function CartonStack({ x, z, n, base = FLOOR_Y, seed }: { x: number; z: n
       {boxes.map((b, i) => (
         <Box key={i} s={[b.s, b.s * 0.8, b.s]} m={carton(i)} p={[b.x, b.y, b.z]} ry={b.ry} />
       ))}
-    </>
-  );
-}
-
-/** Simple standing figure, used for the forklift driver. People proper arrive in step 2. */
-export function StandingFigure({ shirt, skin = 0xd9a477 }: { shirt: string; skin?: number }) {
-  return (
-    <>
-      <Part g={cylinderGeometry(0.15, 0.14, 0.72)} m={M.pants} p={[0, 0.36, 0]} />
-      <Part g={cylinderGeometry(0.2, 0.17, 0.62)} m={mat(tint(shirt, 0.1))} p={[0, 1.03, 0]} />
-      <Part g={sphereGeometry(0.17)} m={mat(skin)} p={[0, 1.52, 0]} />
     </>
   );
 }

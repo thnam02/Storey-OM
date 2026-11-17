@@ -1,18 +1,29 @@
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
 import type * as THREE from 'three';
-import { carton, cylinderGeometry, M } from '../materials';
-import { StandingFigure } from '../props/furniture';
-import { Box, Part } from '../props/primitives';
+import type { Employee } from '../../data/types';
 import type { Vec3 } from '../constants';
+import { carton, cylinderGeometry, M } from '../materials';
+import { ANCHOR_Y, HI_VIS, StandingFigure } from '../people/Figures';
+import { PersonNode } from '../people/PersonNode';
+import { Box, Part } from '../props/primitives';
 
 const RANGE = 6.4;
 const SPEED = 1.8;
 const PAUSE = 1.5;
 const WHEEL_ROT: Vec3 = [Math.PI / 2, 0, 0];
 
-/** Forklift driving up and down the front aisle. Still when motion is reduced. */
-export function Forklift({ animate }: { animate: boolean }) {
+interface Driver {
+  person: Employee;
+  ringColor: string;
+  open: boolean;
+}
+
+/**
+ * Forklift driving up and down the front aisle. Still when motion is reduced.
+ * With a driver, the whole forklift is their click target and carries their ring.
+ */
+export function Forklift({ animate, driver }: { animate: boolean; driver?: Driver }) {
   const ref = useRef<THREE.Group>(null);
   const state = useRef({ dir: 1, pause: 0 });
 
@@ -34,8 +45,8 @@ export function Forklift({ animate }: { animate: boolean }) {
     f.rotation.y = s.dir > 0 ? 0 : Math.PI;
   });
 
-  return (
-    <group ref={ref} position={[-5, 0.3, 2.4]}>
+  const body = (
+    <>
       <Box s={[1.4, 0.55, 0.95]} m={M.yellow} p={[0, 0.6, 0]} />
       <Box s={[0.5, 0.4, 0.9]} m={M.dark} p={[-0.55, 0.95, 0]} />
       {([[-0.45, 0.42], [0.45, 0.42], [-0.45, -0.42], [0.45, -0.42]] as const).map(([x, z], i) => (
@@ -52,8 +63,20 @@ export function Forklift({ animate }: { animate: boolean }) {
         <Part key={i} g={cylinderGeometry(0.24, 0.24, 0.16, 12)} m={M.tyre} p={[x, 0.3, z]} rot={WHEEL_ROT} />
       ))}
       <group position={[-0.2, 0.5, 0]} scale={0.8}>
-        <StandingFigure shirt="#f08a24" />
+        <StandingFigure personId={driver?.person.id ?? 'forklift-driver'} shirt={HI_VIS} />
       </group>
+    </>
+  );
+
+  return (
+    <group ref={ref} position={[-5, 0.3, 2.4]}>
+      {driver ? (
+        <PersonNode person={driver.person} ringColor={driver.ringColor} open={driver.open} animate={animate} anchorY={ANCHOR_Y.forklift} ringScale={2.2}>
+          {body}
+        </PersonNode>
+      ) : (
+        body
+      )}
     </group>
   );
 }

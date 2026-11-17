@@ -1,8 +1,9 @@
 import { Canvas } from '@react-three/fiber';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { DEPARTMENTS } from '../data/sample';
 import { departmentStatus } from '../data/status';
 import type { CompanyData, TeamData } from '../data/types';
+import { workloadByEmployee } from '../data/workload';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import { useUiStore } from '../state/uiStore';
 import { CameraRig } from './CameraRig';
@@ -37,6 +38,8 @@ export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }
   const fontsReady = useFontsReady();
   const reducedMotion = useReducedMotion();
   const hoverDept = useUiStore((s) => s.hoverDept);
+  const load = useMemo(() => workloadByEmployee(team.employees, team.tasks, team.today, team.weekStart), [team]);
+  const warehouseTeam = useMemo(() => team.employees.filter((e) => e.departmentId === 'warehouse'), [team.employees]);
 
   if (!fontsReady) return null;
 
@@ -59,8 +62,8 @@ export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }
         <Ground />
         <Trees />
         <Traffic animate={!reducedMotion} />
-        <OfficeBuilding data={data} team={team} />
-        <Warehouse data={data.warehouse} animate={!reducedMotion} />
+        <OfficeBuilding data={data} employees={team.employees} load={load} animate={!reducedMotion} />
+        <Warehouse data={data.warehouse} team={warehouseTeam} load={load} animate={!reducedMotion} />
         <LabelProjector />
       </Canvas>
       <div className="labels">

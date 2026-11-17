@@ -1,11 +1,13 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { departmentById } from '../../data/sample';
-import type { WarehouseData } from '../../data/types';
+import type { Employee, WarehouseData } from '../../data/types';
+import { WORKLOAD_STATE, type Workload } from '../../data/workload';
 import { useUiStore } from '../../state/uiStore';
 import { SEEDS, WAREHOUSE } from '../constants';
 import { BuildingHitArea } from '../interaction/BuildingHitArea';
 import { M, mat } from '../materials';
+import { WarehousePeople } from '../people/WarehousePeople';
 import { CartonStack } from '../props/furniture';
 import { Box, Sign } from '../props/primitives';
 import { Truck } from '../props/vehicles';
@@ -21,13 +23,23 @@ const SIDE_COLUMNS = [-D / 2 + 0.2, -2.2, 2.2];
 const TRUSS_Z = Array.from({ length: Math.ceil((D - 1.8) / 2.6) }, (_, i) => -D / 2 + 1.8 + i * 2.6).filter((z) => z < D / 2);
 const FLOOR_PALLETS: [number, number][] = [[-6.6, 4.8], [-5.4, 4.8], [-6.0, 3.6], [6.2, 4.6]];
 
+interface Props {
+  data: WarehouseData;
+  /** Warehouse staff; only those on shift are drawn. */
+  team: Employee[];
+  load: Map<string, Workload>;
+  animate: boolean;
+}
+
 /**
  * Separate warehouse building: corrugated back and side walls, open front,
- * racking by zone, a forklift and the loading dock with a truck.
+ * racking by zone, a forklift and the loading dock with a truck,
+ * and the on-shift staff.
  * The fascia and roof trusses hide while the warehouse is open.
  */
-export function Warehouse({ data, animate }: { data: WarehouseData; animate: boolean }) {
+export function Warehouse({ data, team, load, animate }: Props) {
   const open = useUiStore((s) => s.selectedDeptId === 'warehouse');
+  const driver = useMemo(() => team.find((p) => p.activity === 'forklift' && p.presence !== 'off_shift'), [team]);
   const walls = useMemo(
     () => ({
       back: new THREE.MeshStandardMaterial({ map: corrugatedTexture(W * 1.2), roughness: 0.8 }),
@@ -69,7 +81,11 @@ export function Warehouse({ data, animate }: { data: WarehouseData; animate: boo
             <CartonStack x={x} z={z} n={2 + (i % 2)} base={0.42} seed={SEEDS.cartons + i} />
           </group>
         ))}
-        <Forklift animate={animate} />
+        <Forklift
+          animate={animate}
+          driver={driver && { person: driver, ringColor: WORKLOAD_STATE[load.get(driver.id)?.state ?? 'ok'].color, open }}
+        />
+        <WarehousePeople team={team} load={load} open={open} animate={animate} />
 
         <BuildingHitArea
           id="warehouse"

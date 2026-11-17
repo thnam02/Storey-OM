@@ -45,32 +45,46 @@ export function BuildingHitArea({ id, color, hitSize, glowSize, center }: Props)
     gl.domElement.style.cursor = c;
   };
 
+  /**
+   * Only the nearest building under the pointer reacts. The open department's
+   * box doesn't stop the event, so the people inside it can be hovered and
+   * clicked; buildings behind it see it is nearer and ignore the event.
+   */
+  const nearestIsMe = (e: ThreeEvent<PointerEvent | MouseEvent>) =>
+    e.intersections.find((i) => i.object.userData.hitArea)?.object.userData.hitArea === id;
+
   const onOver = (e: ThreeEvent<PointerEvent>) => {
-    e.stopPropagation(); // only the nearest building reacts
+    if (!nearestIsMe(e)) return;
     const { selectedDeptId, hoverDept } = useUiStore.getState();
-    const selectable = selectedDeptId !== id;
-    hoverDept(selectable ? id : null);
-    setCursor(selectable ? 'pointer' : 'grab');
+    if (selectedDeptId === id) {
+      hoverDept(null);
+      return;
+    }
+    e.stopPropagation();
+    hoverDept(id);
+    setCursor('pointer');
   };
 
   const onOut = () => {
     const { hoveredDeptId, hoverDept } = useUiStore.getState();
-    if (hoveredDeptId === id) hoverDept(null);
+    if (hoveredDeptId !== id) return;
+    hoverDept(null);
     setCursor('grab');
   };
 
   const onClick = (e: ThreeEvent<MouseEvent>) => {
+    if (!nearestIsMe(e)) return;
+    const { selectedDeptId, selectDept, hoverDept } = useUiStore.getState();
+    if (selectedDeptId === id) return; // let a person inside take the click
     e.stopPropagation();
     if (e.delta > CLICK_TOLERANCE) return; // that was a drag to orbit
-    const { selectedDeptId, selectDept, hoverDept } = useUiStore.getState();
-    if (selectedDeptId === id) return;
     hoverDept(null);
     selectDept(id);
   };
 
   return (
     <group position={center}>
-      <mesh geometry={boxGeometry(...hitSize)} material={hitMaterial} onPointerOver={onOver} onPointerOut={onOut} onClick={onClick} />
+      <mesh geometry={boxGeometry(...hitSize)} material={hitMaterial} userData={{ hitArea: id }} onPointerOver={onOver} onPointerOut={onOut} onClick={onClick} />
       <mesh ref={glow} geometry={boxGeometry(...glowSize)} material={glowMaterial} visible={false} />
     </group>
   );
