@@ -4,7 +4,7 @@ import { firstName, presenceLabel } from '../data/people';
 import type { Department, Employee } from '../data/types';
 import { WORKLOAD_STATE, type Workload } from '../data/workload';
 import { formatWeekdayDay } from '../lib/dates';
-import { useDataStore } from '../state/dataStore';
+import { useSnapshot } from '../state/serverData';
 import { useUiStore } from '../state/uiStore';
 import { Kpi, Section } from './ui';
 
@@ -41,7 +41,7 @@ function PersonRow({ person, workload }: { person: Employee; workload: Workload 
 
 /** Everyone in the department with their task counts, overdue first. */
 export function TeamTab({ dept }: { dept: Department }) {
-  const team = useDataStore((s) => s.team);
+  const team = useSnapshot().team;
   const load = teamWorkload(team);
   const people = byUrgency(peopleIn(team, dept.id), load);
   const onSite = people.filter((p) => p.presence !== 'off_shift');

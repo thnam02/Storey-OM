@@ -4,8 +4,9 @@ import { departmentStatus } from '../data/status';
 import type { Department } from '../data/types';
 import { formatDay, formatLongDay } from '../lib/dates';
 import { formatShortMoney } from '../lib/format';
-import { useDataStore } from '../state/dataStore';
+import { dataSourceKind, useSnapshot } from '../state/serverData';
 import { useUiStore } from '../state/uiStore';
+import { ActivityFeed } from './ActivityFeed';
 import { accent, Chip, Crumbs, Kpi, Section } from './ui';
 
 const where = (d: Department) => (d.level ? `Level ${d.level}` : 'Warehouse building');
@@ -13,8 +14,9 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Whole-company view: headline numbers and every department's health. */
 export function Overview() {
-  const data = useDataStore((s) => s.company);
-  const team = useDataStore((s) => s.team);
+  const data = useSnapshot().company;
+  const team = useSnapshot().team;
+  const { activity, isSample } = useSnapshot();
   const hovered = useUiStore((s) => s.hoveredDeptId);
   const { selectDept, hoverDept } = useUiStore.getState();
   const load = teamWorkload(team);
@@ -66,9 +68,12 @@ export function Overview() {
             })}
           </div>
         </Section>
+        <ActivityFeed entries={activity} />
         <div className="note">
-          Sample data. Click a floor to open its floor plan and team, then click a person to see their tasks. Assign, delegate and approve only
-          change this page until the database is connected.
+          {isSample && 'Sample data. '}Click a floor to open its floor plan and team, then click a person to see their tasks.{' '}
+          {dataSourceKind === 'sample'
+            ? 'No database is connected, so changes last until you reload.'
+            : 'Changes are saved to the database and logged.'}
         </div>
       </div>
     </>

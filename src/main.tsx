@@ -1,18 +1,18 @@
+import { QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles/tokens.css';
 import './styles/app.css';
 import App from './App';
-import { SAMPLE_TEAM } from './data/sampleTeam';
-import { applyInitialHash } from './state/useHashSync';
-
-applyInitialHash(SAMPLE_TEAM.employees);
+import { queryClient } from './state/serverData';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
   </StrictMode>,
 );

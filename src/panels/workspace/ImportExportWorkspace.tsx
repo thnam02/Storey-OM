@@ -1,7 +1,7 @@
 import { isLowStock } from '../../data/metrics';
 import type { ShipmentStatus } from '../../data/types';
 import { addDays, formatDay, parseDayMonth } from '../../lib/dates';
-import { useDataStore } from '../../state/dataStore';
+import { useSnapshot } from '../../state/serverData';
 import { Chip, DeptLink, Feed, Kpi, Section, type Tone } from '../ui';
 
 const SHIP_TONE: Record<ShipmentStatus, Tone> = { 'At customs': 'warn', 'In transit': 'info', Booked: 'muted', Delivered: 'ok' };
@@ -10,9 +10,9 @@ const products = (n: number) => `${WORDS[n] ?? n} product${n === 1 ? '' : 's'}`;
 
 /** Shipments in and out (route, mode, ETA, customs) and paperwork to do. */
 export function ImportExportWorkspace() {
-  const I = useDataStore((s) => s.company.importExport);
-  const stock = useDataStore((s) => s.company.warehouse.stock);
-  const today = useDataStore((s) => s.team.today);
+  const I = useSnapshot().company.importExport;
+  const stock = useSnapshot().company.warehouse.stock;
+  const today = useSnapshot().team.today;
 
   const active = I.shipments.filter((s) => s.status !== 'Delivered');
   const arrivingBy = addDays(today, 6);

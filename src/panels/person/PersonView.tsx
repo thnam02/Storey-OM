@@ -1,29 +1,31 @@
 import { useMemo, useState } from 'react';
+import { involves } from '../../data/activity';
 import { loadOf, teamWorkload } from '../../data/metrics';
 import { firstName, presenceLabel, presenceTone } from '../../data/people';
 import { departmentById } from '../../data/sample';
 import { delegateTargets } from '../../data/taskOps';
 import type { Employee, Task } from '../../data/types';
 import { isOverdue, WORKLOAD_STATE } from '../../data/workload';
-import { useDataStore } from '../../state/dataStore';
+import { useAction, useSnapshot } from '../../state/serverData';
 import { useUiStore } from '../../state/uiStore';
+import { ActivityFeed } from '../ActivityFeed';
 import { accent, Chip, Crumbs, Kpi, Section } from '../ui';
 import { AssignForm } from './AssignForm';
 import { TaskCard } from './TaskCard';
 
 /**
  * One person: presence, workload, their tasks by status, a form to assign new
- * work, and delegation to teammates. Mount with key={person.id} so the
- * messages and open delegate picker reset between people.
+ * work, delegation to teammates, marking done, and recent activity. Mount
+ * with key={person.id} so messages and the delegate picker reset between people.
  */
 export function PersonView({ person }: { person: Employee }) {
-  const team = useDataStore((s) => s.team);
-  const viewerId = useDataStore((s) => s.viewerId);
-  const delegate = useDataStore((s) => s.delegate);
+  const { team, viewerId, activity } = useSnapshot();
+  const action = useAction();
   const { selectDept } = useUiStore.getState();
   const [msgOpen, setMsgOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [delegating, setDelegating] = useState<string | null>(null);
+  const canEdit = viewerId !== null;
 
   const d = departmentById[person.departmentId];
   const load = teamWorkload(team);
@@ -41,12 +43,17 @@ export function PersonView({ person }: { person: Employee }) {
   const done = mine.filter((t) => t.status === 'done').sort((a, b) => (b.doneAt ?? b.dueDate).localeCompare(a.doneAt ?? a.dueDate));
   const total = Math.max(1, w.open + done.length);
 
+  /** Save a change and report how it went. */
+  const run = (a: Parameters<typeof action.mutate>[0], ok: string, failed: string) =>
+    action.mutate(a, { onSuccess: () => setFlash(ok), onError: (err) => setFlash(`${failed}: ${err.message}`) });
+
   const card = (t: Task) => (
     <TaskCard
       key={t.id}
       task={t}
       today={team.today}
       viewerId={viewerId}
+      canEdit={canEdit}
       nameOf={nameOf}
       targets={delegateTargets(team, t).map((p) => ({ person: p, workload: loadOf(load, p.id) }))}
       delegating={delegating === t.id}
@@ -56,10 +63,11 @@ export function PersonView({ person }: { person: Employee }) {
       }}
       onCancelDelegate={() => setDelegating(null)}
       onDelegate={(toId) => {
-        const moved = delegate(t.id, toId);
         setDelegating(null);
-        if (moved) setFlash(`“${moved.title}” is now with ${nameOf(toId)}.`);
+        run({ type: 'delegate', taskId: t.id, toId }, `“${t.title}” is now with ${nameOf(toId)}.`, `Couldn't delegate “${t.title}”`);
       }}
+      onComplete={() => run({ type: 'complete', taskId: t.id }, `Marked “${t.title}” done.`, `Couldn't mark “${t.title}” done`)}
+      onReopen={() => run({ type: 'reopen', taskId: t.id }, `Reopened “${t.title}”.`, `Couldn't reopen “${t.title}”`)}
     />
   );
   const group = (title: string, list: Task[], empty: string) => (
@@ -120,18 +128,23 @@ export function PersonView({ person }: { person: Employee }) {
           <i style={{ width: `${(w.todo / total) * 100}%`, background: '#c7d1d7' }} />
           <i style={{ width: `${((total - w.open) / total) * 100}%`, background: '#e3e9ec' }} />
         </div>
-        <Section title={`Assign a task to ${first}`}>
-          <AssignForm
-            person={person}
-            onAssigned={() => {
-              setDelegating(null);
-              setFlash(`Assigned to ${person.name}.`);
-            }}
-          />
-        </Section>
+        {canEdit ? (
+          <Section title={`Assign a task to ${first}`}>
+            <AssignForm
+              person={person}
+              onDone={(message) => {
+                setDelegating(null);
+                setFlash(message);
+              }}
+            />
+          </Section>
+        ) : (
+          <div className="note">Sign in to assign, delegate or complete tasks.</div>
+        )}
         {group('In progress', doing, 'Nothing in progress.')}
         {group('To do', todo, 'Nothing waiting.')}
         {group('Done', done, 'Nothing finished yet.')}
+        <ActivityFeed entries={activity.filter((e) => involves(e, person.id))} limit={5} />
       </div>
     </>
   );

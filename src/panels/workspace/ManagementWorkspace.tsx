@@ -1,17 +1,20 @@
 import { peopleIn, q4Revenue, revenueThisYear, teamWorkload, totals } from '../../data/metrics';
 import { DEPARTMENTS } from '../../data/sample';
+import type { ApprovalState } from '../../data/types';
 import { departmentStatus } from '../../data/status';
 import { formatDay } from '../../lib/dates';
 import { formatMoney, formatShortMoney } from '../../lib/format';
-import { useDataStore } from '../../state/dataStore';
+import { useAction, useSnapshot } from '../../state/serverData';
 import { useUiStore } from '../../state/uiStore';
 import { Chip, DeptLink, Kpi, Section } from '../ui';
 
 /** Approvals queue, company goals and an overview of every team. */
 export function ManagementWorkspace() {
-  const data = useDataStore((s) => s.company);
-  const team = useDataStore((s) => s.team);
-  const setApproval = useDataStore((s) => s.setApproval);
+  const data = useSnapshot().company;
+  const team = useSnapshot().team;
+  const viewerId = useSnapshot().viewerId;
+  const action = useAction();
+  const setApproval = (approvalId: string, state: ApprovalState) => action.mutate({ type: 'decide', approvalId, state });
   const G = data.management;
   const load = teamWorkload(team);
 
@@ -26,6 +29,7 @@ export function ManagementWorkspace() {
         <Kpi k="People" v={team.employees.length} s={`${DEPARTMENTS.length} teams`} />
       </div>
       <Section title="Waiting for your approval">
+        {action.isError && <div className="note msg" role="alert">Couldn't save that decision: {action.error.message}</div>}
         <div className="list">
           {G.approvals.map((a) => (
             <div className="item" key={a.id}>
@@ -35,7 +39,11 @@ export function ManagementWorkspace() {
                 {a.amt ? ` · ${formatMoney(a.amt)}` : ''}
               </span>
               <div className="acts">
-                {a.state === 'waiting' ? (
+                {viewerId === null ? (
+                  <Chip tone={a.state === 'approved' ? 'ok' : a.state === 'declined' ? 'muted' : 'warn'}>
+                    {a.state === 'approved' ? 'Approved' : a.state === 'declined' ? 'Declined' : 'Waiting'}
+                  </Chip>
+                ) : a.state === 'waiting' ? (
                   <>
                     <button className="btn sm primary" type="button" onClick={() => setApproval(a.id, 'approved')}>
                       Approve

@@ -1,14 +1,14 @@
 import type { Department } from '../../data/types';
 import { formatDay, monthName } from '../../lib/dates';
 import { formatMoney, formatShortMoney, sum } from '../../lib/format';
-import { useDataStore } from '../../state/dataStore';
+import { useSnapshot } from '../../state/serverData';
 import { Chip, Kpi, Section } from '../ui';
 import { RevenueChart } from './RevenueChart';
 
 /** Cash, receivables, invoices to chase, bills to pay and revenue by month. */
 export function FinanceWorkspace({ dept }: { dept: Department }) {
-  const F = useDataStore((s) => s.company.finance);
-  const today = useDataStore((s) => s.team.today);
+  const F = useSnapshot().company.finance;
+  const today = useSnapshot().team.today;
   const overdue = F.invoices.filter((i) => i.status === 'Overdue');
   const thisMonth = F.revenue[F.revenue.length - 1] ?? 0;
 

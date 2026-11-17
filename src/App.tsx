@@ -1,11 +1,13 @@
 import type { CSSProperties } from 'react';
-import { IS_SAMPLE_DATA } from './data/sample';
+import type { Employee } from './data/types';
 import { WORKLOAD_STATE } from './data/workload';
 import { PanelShell } from './panels/PanelShell';
 import { SiteCanvas } from './scene/SiteCanvas';
-import { useDataStore } from './state/dataStore';
+import { useSnapshotQuery } from './state/serverData';
 import { useHashSync } from './state/useHashSync';
 import { useUiStore } from './state/uiStore';
+
+const NO_EMPLOYEES: Employee[] = [];
 
 function Logo() {
   return (
@@ -21,9 +23,9 @@ export default function App() {
   const selected = useUiStore((s) => s.selectedDeptId);
   const autoRotate = useUiStore((s) => s.autoRotate);
   const { selectDept, resetCamera, toggleAutoRotate } = useUiStore.getState();
-  const data = useDataStore((s) => s.company);
-  const team = useDataStore((s) => s.team);
-  useHashSync(team.employees);
+  const snapshot = useSnapshotQuery();
+  const snap = snapshot.data;
+  useHashSync(snap?.team.employees ?? NO_EMPLOYEES);
 
   return (
     <>
@@ -35,7 +37,7 @@ export default function App() {
             <p>Storey · Manager view</p>
           </div>
         </div>
-        {IS_SAMPLE_DATA && <span className="pill">Sample data</span>}
+        {snap?.isSample && <span className="pill">Sample data</span>}
         <span className="spacer" />
         <button className="btn" type="button" onClick={() => selectDept(null)}>
           Whole building
@@ -47,27 +49,47 @@ export default function App() {
           Auto-rotate
         </button>
       </header>
-      <main>
-        <div className="stage">
-          <SiteCanvas data={data} team={team} />
-          <div className="hint">
-            {selected
-              ? 'Click a person to see their tasks · Drag to rotate · Scroll to zoom'
-              : 'Drag to rotate · Right-drag to pan · Scroll to zoom · Click a floor or the warehouse'}
-          </div>
-          {selected && (
-            <div className="legend" aria-hidden="true">
-              {(['ok', 'busy', 'late'] as const).map((k) => (
-                <span key={k}>
-                  <i style={{ '--w': WORKLOAD_STATE[k].color } as CSSProperties} />
-                  {k === 'late' ? 'Overdue tasks' : WORKLOAD_STATE[k].label}
-                </span>
-              ))}
+      {snap ? (
+        <main>
+          <div className="stage">
+            <SiteCanvas data={snap.company} team={snap.team} />
+            <div className="hint">
+              {selected
+                ? 'Click a person to see their tasks · Drag to rotate · Scroll to zoom'
+                : 'Drag to rotate · Right-drag to pan · Scroll to zoom · Click a floor or the warehouse'}
             </div>
-          )}
-        </div>
-        <PanelShell />
-      </main>
+            {selected && (
+              <div className="legend" aria-hidden="true">
+                {(['ok', 'busy', 'late'] as const).map((k) => (
+                  <span key={k}>
+                    <i style={{ '--w': WORKLOAD_STATE[k].color } as CSSProperties} />
+                    {k === 'late' ? 'Overdue tasks' : WORKLOAD_STATE[k].label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <PanelShell />
+        </main>
+      ) : (
+        <main>
+          <div className="stage">
+            <div className="fail" role={snapshot.isError ? 'alert' : 'status'}>
+              {snapshot.isError ? (
+                <div>
+                  <p>The company data could not load: {snapshot.error.message}</p>
+                  <button className="btn" type="button" onClick={() => snapshot.refetch()}>
+                    Try again
+                  </button>
+                </div>
+              ) : (
+                'Loading the company…'
+              )}
+            </div>
+          </div>
+          <aside className="panel" />
+        </main>
+      )}
     </>
   );
 }

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { departmentById } from '../data/sample';
-import { useDataStore } from '../state/dataStore';
+import { useSnapshot } from '../state/serverData';
 import { useUiStore } from '../state/uiStore';
 import { DepartmentPanel } from './DepartmentPanel';
 import { Overview } from './Overview';
@@ -14,7 +14,8 @@ export function PanelShell() {
   const deptId = useUiStore((s) => s.selectedDeptId);
   const personId = useUiStore((s) => s.selectedEmployeeId);
   const tab = useUiStore((s) => s.deptTab);
-  const person = useDataStore((s) => (personId ? s.team.employees.find((e) => e.id === personId) : undefined));
+  const employees = useSnapshot().team.employees;
+  const person = personId ? employees.find((e) => e.id === personId) : undefined;
   const ref = useRef<HTMLElement>(null);
 
   // Start at the top when moving to another view; edits keep the scroll position.

@@ -1,14 +1,14 @@
 import { monthName } from '../../lib/dates';
 import { formatShortMoney, sum } from '../../lib/format';
-import { useDataStore } from '../../state/dataStore';
+import { useSnapshot } from '../../state/serverData';
 import { BarRow, Chip, Feed, Kpi, Section, type Tone } from '../ui';
 
 const STAGE_TONE: Record<string, Tone> = { Negotiation: 'info', Proposal: 'muted', Qualified: 'muted' };
 
 /** Pipeline by stage, biggest open deals and today's activities. */
 export function SalesWorkspace() {
-  const X = useDataStore((s) => s.company.sales);
-  const today = useDataStore((s) => s.team.today);
+  const X = useSnapshot().company.sales;
+  const today = useSnapshot().team.today;
   const max = Math.max(1, ...X.stages.map((s) => s.value));
 
   return (

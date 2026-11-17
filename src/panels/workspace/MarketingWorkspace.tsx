@@ -1,12 +1,12 @@
 import { monthName } from '../../lib/dates';
 import { formatShortMoney, sum } from '../../lib/format';
-import { useDataStore } from '../../state/dataStore';
+import { useSnapshot } from '../../state/serverData';
 import { BarRow, Chip, Feed, Kpi, Section } from '../ui';
 
 /** Campaigns, leads by channel, and spend against budget. */
 export function MarketingWorkspace() {
-  const X = useDataStore((s) => s.company.marketing);
-  const today = useDataStore((s) => s.team.today);
+  const X = useSnapshot().company.marketing;
+  const today = useSnapshot().team.today;
   const leads = sum(X.campaigns, (c) => c.leads);
   const spend = sum(X.campaigns, (c) => c.leads * c.cpl);
 

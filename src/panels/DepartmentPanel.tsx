@@ -2,7 +2,7 @@ import type { KeyboardEvent } from 'react';
 import { peopleIn } from '../data/metrics';
 import { departmentStatus } from '../data/status';
 import type { Department } from '../data/types';
-import { useDataStore } from '../state/dataStore';
+import { useSnapshot } from '../state/serverData';
 import { useUiStore, type DeptTab } from '../state/uiStore';
 import { TeamTab } from './TeamTab';
 import { accent, Chip, Crumbs } from './ui';
@@ -10,8 +10,8 @@ import { WORKSPACES } from './workspace';
 
 /** Header with status and the Team / Workspace tabs for one department. */
 export function DepartmentPanel({ dept }: { dept: Department }) {
-  const data = useDataStore((s) => s.company);
-  const team = useDataStore((s) => s.team);
+  const data = useSnapshot().company;
+  const team = useSnapshot().team;
   const tab = useUiStore((s) => s.deptTab);
   const { selectDept, setDeptTab } = useUiStore.getState();
   const st = departmentStatus(dept.id, data);

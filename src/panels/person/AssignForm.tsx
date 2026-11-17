@@ -1,22 +1,31 @@
 import { useState, type FormEvent } from 'react';
-import type { Employee, Task } from '../../data/types';
+import type { Employee } from '../../data/types';
 import { dueDateOptions } from '../../lib/dates';
-import { useDataStore } from '../../state/dataStore';
+import { useAction, useSnapshot } from '../../state/serverData';
 
 /** One-line form to give someone a new task. */
-export function AssignForm({ person, onAssigned }: { person: Employee; onAssigned: (task: Task) => void }) {
-  const today = useDataStore((s) => s.team.today);
-  const assign = useDataStore((s) => s.assign);
+export function AssignForm({ person, onDone }: { person: Employee; onDone: (message: string) => void }) {
+  const today = useSnapshot().team.today;
+  const action = useAction();
   const options = dueDateOptions(today);
   const [title, setTitle] = useState('');
   const [due, setDue] = useState(options[1]?.value ?? today);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const task = assign(person.id, title, due);
-    if (!task) return;
+    const trimmed = title.trim();
+    if (!trimmed) return;
     setTitle('');
-    onAssigned(task);
+    action.mutate(
+      { type: 'assign', assigneeId: person.id, title: trimmed, dueDate: due },
+      {
+        onSuccess: () => onDone(`Assigned to ${person.name}.`),
+        onError: (err) => {
+          setTitle(trimmed);
+          onDone(`Couldn't assign “${trimmed}”: ${err.message}`);
+        },
+      },
+    );
   };
 
   return (

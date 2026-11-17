@@ -1,12 +1,12 @@
 import { incomingFor, isLowStock, lowStock, rackSpaceUsed } from '../../data/metrics';
 import type { Department } from '../../data/types';
-import { useDataStore } from '../../state/dataStore';
+import { useSnapshot } from '../../state/serverData';
 import { Chip, DeptLink, Feed, Kpi, Section } from '../ui';
 
 /** Zones and capacity, stock against reorder points, and recent movements. */
 export function WarehouseWorkspace({ dept }: { dept: Department }) {
-  const W = useDataStore((s) => s.company.warehouse);
-  const shipments = useDataStore((s) => s.company.importExport.shipments);
+  const W = useSnapshot().company.warehouse;
+  const shipments = useSnapshot().company.importExport.shipments;
 
   return (
     <>
