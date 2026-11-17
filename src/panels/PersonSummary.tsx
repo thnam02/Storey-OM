@@ -55,7 +55,7 @@ export function PersonSummary({ person, team }: { person: Employee; team: TeamDa
         </div>
       </div>
       <div className="pb">
-        <div className="kpis">
+        <div className="kpis four">
           {kpis.map(([k, v, late]) => (
             <div className="kpi" key={k}>
               <div className="k">{k}</div>

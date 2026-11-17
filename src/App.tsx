@@ -1,9 +1,9 @@
 import type { CSSProperties } from 'react';
-import { IS_SAMPLE_DATA, SAMPLE_DATA } from './data/sample';
-import { SAMPLE_TEAM } from './data/sampleTeam';
+import { IS_SAMPLE_DATA } from './data/sample';
 import { WORKLOAD_STATE } from './data/workload';
 import { PanelShell } from './panels/PanelShell';
 import { SiteCanvas } from './scene/SiteCanvas';
+import { useDataStore } from './state/dataStore';
 import { useHashSync } from './state/useHashSync';
 import { useUiStore } from './state/uiStore';
 
@@ -21,8 +21,8 @@ export default function App() {
   const selected = useUiStore((s) => s.selectedDeptId);
   const autoRotate = useUiStore((s) => s.autoRotate);
   const { selectDept, resetCamera, toggleAutoRotate } = useUiStore.getState();
-  const data = SAMPLE_DATA;
-  const team = SAMPLE_TEAM;
+  const data = useDataStore((s) => s.company);
+  const team = useDataStore((s) => s.team);
   useHashSync(team.employees);
 
   return (
@@ -66,9 +66,7 @@ export default function App() {
             </div>
           )}
         </div>
-        <aside className="panel" aria-live="polite">
-          <PanelShell data={data} team={team} />
-        </aside>
+        <PanelShell />
       </main>
     </>
   );

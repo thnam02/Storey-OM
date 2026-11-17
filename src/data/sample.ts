@@ -6,9 +6,6 @@ import type { CompanyData, Department, DepartmentId } from './types';
 
 export const IS_SAMPLE_DATA = true;
 
-/** "Today" in the sample data: Tuesday 17 November 2026. */
-export const SAMPLE_TODAY_LABEL = 'Tuesday 17 Nov';
-
 export const DEPARTMENTS: Department[] = [
   { id: 'import-export', name: 'Import & Export', color: '#2f8f83', building: 'office', level: 1 },
   { id: 'sales', name: 'Sales', color: '#d9773a', building: 'office', level: 2 },
