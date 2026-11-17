@@ -29,8 +29,8 @@ db/
 
 - `npm run db:seed` regenerates `supabase/seed.sql` after the sample data changes. A test fails if it is out of date.
 - `npm test` also runs the schema, seed and database functions in PGlite (Postgres in WebAssembly), so no database server is needed.
-- To run against a local Supabase (needs Docker): `npx supabase start`, then `npm run db:reset` to apply the migrations and seed. Copy `.env.example` to `.env.local` and fill in the API URL and anon key it prints, then `npm run dev`.
-- To use a hosted project: `npx supabase link --project-ref <ref>`, then `npx supabase db push`. Load the seed only into a project meant for sample data.
+- To run against a local Supabase (needs Docker): `npx supabase start`, then `npm run db:reset` to apply the migrations and seed. Copy `.env.example` to `.env.local` and fill in the API URL and anon key it prints, then `npm run dev` and open http://localhost:5173. Sign in with a sample account (below); the sign-in email arrives in the local test inbox at http://127.0.0.1:54324.
+- To use a hosted project: `npx supabase link --project-ref <ref>`, then `npx supabase db push`. Load the seed only into a project meant for sample data. In the project's auth settings, keep **Confirm email** on and add the app's address to the redirect URLs.
 
 Notes on the design:
 
@@ -39,7 +39,41 @@ Notes on the design:
 - **Tasks link to CRM records** through `linked_type` and `linked_id`. A trigger checks that the record exists, and another keeps delegation inside a department.
 - **"Today" is pinned** to 17 Nov 2026 for the sample data (`app_settings.today`), so overdue and this-week figures keep their meaning.
 - **Changes go through database functions**: `assign_task`, `delegate_task`, `complete_task`, `reopen_task` and `decide_approval`. Each writes the change and its `activity_log` entry in one transaction. Tables have no write policies, so these functions are the only way to change data.
-- **Access before sign-in (step 6):** while `app_settings.dataset` is `sample`, anyone with the API key can read the data and make changes as the sample viewer (Michael Chen). With any other dataset, nothing can be read or changed until roles are added in step 6. Don't load real data into a sample-mode database.
+- **Changes are checked by role.** Managers can assign, delegate and complete tasks only for people in their own department; only directors decide approvals.
+
+## Sign-in and roles
+
+People sign in with an emailed link (Supabase Auth, no passwords). An account acts as the employee whose `email` matches it, once the address is confirmed, and only if that employee has app access (`employees.access`):
+
+| Role | Sees | Can change |
+|---|---|---|
+| `director` | every department | tasks anywhere; approvals |
+| `manager` | their own department | tasks in their department |
+| none | nothing | nothing |
+
+Every signed-in manager can see the staff directory, departments, customers and company goals. Tasks, the activity log and each department's records (deals, campaigns, invoices, shipments, stock and so on) are limited by row-level security to the departments the viewer can see. Import & Export and the Warehouse share shipments and stock. A task's linked record keeps its label (an invoice number, a shipment code) even when the record belongs to another department. In the app, departments outside your access are locked, in 3D and in the panels.
+
+To give someone access, set their work email and role on their employee record:
+
+```sql
+update employees set email = 'rachel@yourcompany.com', access = 'manager' where slug = 'rachel-tan';
+```
+
+Sample accounts (`firstname.lastname@storey.example`, a reserved domain, so mail only reaches the local test inbox):
+
+| Account | Role |
+|---|---|
+| michael.chen@storey.example | Director (managing director) |
+| thao.nguyen@storey.example, andrew.walsh@storey.example | Director |
+| daniel.reid@storey.example | Manager, Sales |
+| emma.lawson@storey.example | Manager, Marketing |
+| rachel.tan@storey.example | Manager, Finance |
+| tuan.ho@storey.example | Manager, Import & Export |
+| steve.collins@storey.example | Manager, Warehouse |
+
+Without a database there is no sign-in: a **View as** menu in the header picks which of these people to use the app as, and the app shows exactly what the database would show them (a test checks this for every account).
+
+The employee view (later) will add a role scoped to a person's own desk and tasks: extend `app_role` and `visible_departments()`, and add a policy on `tasks`.
 
 ## Layout
 
@@ -60,4 +94,4 @@ src/
 
 ## Status
 
-Build steps 1 to 3 are done: the 3D site, camera, hover, click and labels; floor-plan mode with generated seating, people with workload status rings and name tags; and the side panels (company overview, each department's Team and Workspace tabs, and the person view with assigning and delegating). All data is hard-coded sample data, and changes last until you reload. Step 4 added the database schema and a generated seed of the same sample data. Step 5 saves assign, delegate, mark done, reopen and approvals through database functions with an activity log, and shows recent activity in the panels. Without Supabase configured the app still runs on the in-memory sample. Step 6 (sign-in and roles) is next.
+Build steps 1 to 3 are done: the 3D site, camera, hover, click and labels; floor-plan mode with generated seating, people with workload status rings and name tags; and the side panels (company overview, each department's Team and Workspace tabs, and the person view with assigning and delegating). All data is hard-coded sample data, and changes last until you reload. Step 4 added the database schema and a generated seed of the same sample data. Step 5 saves assign, delegate, mark done, reopen and approvals through database functions with an activity log, and shows recent activity in the panels. Step 6 adds sign-in and roles: directors see every department, managers their own. Without Supabase configured the app still runs on the in-memory sample, with a View as menu in place of sign-in. Step 7 (employee view, chat integration, real seating plans, cross-department requests) is next.
