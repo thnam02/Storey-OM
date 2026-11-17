@@ -1,30 +1,33 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { departmentById, OFFICE_FLOORS } from '../../data/sample';
-import type { CompanyData, Department, DepartmentId } from '../../data/types';
+import type { CompanyData, Department, DepartmentId, TeamData } from '../../data/types';
+import type { OfficeDepartmentId } from '../../layout/floorLayout';
 import { sum } from '../../lib/format';
 import { useUiStore } from '../../state/uiStore';
 import { floorY, OFFICE } from '../constants';
 import { BuildingHitArea } from '../interaction/BuildingHitArea';
-import { FinanceFurniture } from './furniture/FinanceFurniture';
-import { ImportExportFurniture } from './furniture/ImportExportFurniture';
-import { ManagementFurniture } from './furniture/ManagementFurniture';
-import { MarketingFurniture } from './furniture/MarketingFurniture';
-import { SalesFurniture } from './furniture/SalesFurniture';
+import { FinanceDecor } from './decor/FinanceDecor';
+import { ImportExportDecor } from './decor/ImportExportDecor';
+import { ManagementDecor } from './decor/ManagementDecor';
+import { MarketingDecor } from './decor/MarketingDecor';
+import { SalesDecor } from './decor/SalesDecor';
+import { buildFloorPlans } from './floorPlans';
 import { FloorShell } from './FloorShell';
+import { GeneratedFurniture } from './GeneratedFurniture';
 import { Roof } from './Roof';
 
-function furnitureFor(dept: Department, data: CompanyData): ReactNode {
+function decorFor(dept: Department, data: CompanyData): ReactNode {
   switch (dept.id) {
     case 'import-export':
-      return <ImportExportFurniture color={dept.color} />;
+      return <ImportExportDecor color={dept.color} />;
     case 'sales':
-      return <SalesFurniture color={dept.color} stages={data.sales.stages} />;
+      return <SalesDecor color={dept.color} stages={data.sales.stages} />;
     case 'marketing':
-      return <MarketingFurniture leads={sum(data.marketing.campaigns, (c) => c.leads)} />;
+      return <MarketingDecor leads={sum(data.marketing.campaigns, (c) => c.leads)} />;
     case 'finance':
-      return <FinanceFurniture />;
+      return <FinanceDecor />;
     case 'management':
-      return <ManagementFurniture />;
+      return <ManagementDecor />;
     default:
       return null;
   }
@@ -36,19 +39,23 @@ function openLevel(selected: DepartmentId | null) {
 }
 
 /**
- * Five stacked floors, one department each, plus the roof. When a floor is
- * open, the floors above it and the roof are hidden so it can be seen from above.
+ * Five stacked floors, one department each, plus the roof. Desks and meeting
+ * furniture are generated from each floor's headcount. When a floor is open,
+ * the floors above it and the roof are hidden so it can be seen from above.
  */
-export function OfficeBuilding({ data }: { data: CompanyData }) {
+export function OfficeBuilding({ data, team }: { data: CompanyData; team: TeamData }) {
   const level = useUiStore((s) => openLevel(s.selectedDeptId));
+  const plans = useMemo(() => buildFloorPlans(team.employees), [team.employees]);
   return (
     <>
       {OFFICE_FLOORS.map((dept) => {
         const visible = !(level && dept.level > level);
+        const plan = plans.get(dept.id as OfficeDepartmentId);
         return (
           <group key={dept.id} position={[OFFICE.x, floorY(dept.level), OFFICE.z]} visible={visible}>
             <FloorShell dept={dept} />
-            {furnitureFor(dept, data)}
+            {decorFor(dept, data)}
+            {plan && <GeneratedFurniture layout={plan.layout} />}
             {visible && (
               <BuildingHitArea
                 id={dept.id}

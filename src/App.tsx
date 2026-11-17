@@ -47,7 +47,7 @@ export default function App() {
       </header>
       <main>
         <div className="stage">
-          <SiteCanvas data={data} />
+          <SiteCanvas data={data} team={team} />
           <div className="hint">
             {selected
               ? 'Drag to rotate · Scroll to zoom · Click another floor to switch'

@@ -19,23 +19,6 @@ export function Desk({ x, z, ry = 0 }: { x: number; z: number; ry?: number }) {
   );
 }
 
-/** Back-to-back desks: `cols` pairs centred on (cx, cz). */
-export function Pod({ cx, cz, cols }: { cx: number; cz: number; cols: number }) {
-  return (
-    <>
-      {Array.from({ length: cols }, (_, c) => {
-        const x = cx + (c - (cols - 1) / 2) * 1.6;
-        return (
-          <group key={c}>
-            <Desk x={x} z={cz + 0.42} />
-            <Desk x={x} z={cz - 0.42} ry={Math.PI} />
-          </group>
-        );
-      })}
-    </>
-  );
-}
-
 export function Plant({ x, z, s = 1 }: { x: number; z: number; s?: number }) {
   return (
     <>
@@ -54,6 +37,19 @@ export function RoundTable({ x, z, chairs }: { x: number; z: number; chairs: num
         const a = (i / chairs) * Math.PI * 2;
         return <Box key={i} s={[0.42, 0.08, 0.42]} m={M.chair} p={[x + Math.cos(a) * 0.95, FLOOR_Y + 0.46, z + Math.sin(a) * 0.95]} />;
       })}
+    </>
+  );
+}
+
+/** Boardroom table, long side along z. Chairs are drawn at the layout's meeting seats. */
+export function BoardroomTable({ x, z, length, seats }: { x: number; z: number; length: number; seats: { x: number; z: number }[] }) {
+  return (
+    <>
+      <Box s={[1.8, 0.08, length]} m={M.walnut} p={[x, FLOOR_Y + 0.76, z]} />
+      <Box s={[1.2, 0.72, length - 0.4]} m={M.dark} p={[x, FLOOR_Y + 0.36, z]} />
+      {seats.map((s, i) => (
+        <Box key={i} s={[0.48, 0.08, 0.48]} m={M.chair} p={[s.x, FLOOR_Y + 0.47, s.z]} />
+      ))}
     </>
   );
 }

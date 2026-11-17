@@ -2,7 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import { useEffect, useState } from 'react';
 import { DEPARTMENTS } from '../data/sample';
 import { departmentStatus } from '../data/status';
-import type { CompanyData } from '../data/types';
+import type { CompanyData, TeamData } from '../data/types';
 import { useReducedMotion } from '../lib/useReducedMotion';
 import { useUiStore } from '../state/uiStore';
 import { CameraRig } from './CameraRig';
@@ -33,7 +33,7 @@ function useFontsReady() {
  * The 3D company site. Navigation only: it reads company data and UI state,
  * and reports hover and selection through the UI store.
  */
-export function SiteCanvas({ data }: { data: CompanyData }) {
+export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }) {
   const fontsReady = useFontsReady();
   const reducedMotion = useReducedMotion();
   const hoverDept = useUiStore((s) => s.hoverDept);
@@ -59,7 +59,7 @@ export function SiteCanvas({ data }: { data: CompanyData }) {
         <Ground />
         <Trees />
         <Traffic animate={!reducedMotion} />
-        <OfficeBuilding data={data} />
+        <OfficeBuilding data={data} team={team} />
         <Warehouse data={data.warehouse} animate={!reducedMotion} />
         <LabelProjector />
       </Canvas>

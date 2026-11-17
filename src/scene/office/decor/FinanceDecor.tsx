@@ -1,17 +1,14 @@
 import { FLOOR_Y } from '../../constants';
 import { M } from '../../materials';
-import { Desk, Plant } from '../../props/furniture';
+import { Plant } from '../../props/furniture';
 import { Box } from '../../props/primitives';
 
-const ROWS = [-3.3, -1.1, 1.1];
-const COLS = [-4.6, -2.9, -1.2, 0.5];
 const CABINETS = [2.6, 3.6, 4.6, 5.6];
 
-/** Level 4: rows of desks facing one way, filing cabinets and a safe. */
-export function FinanceFurniture() {
+/** Level 4 fixed features: filing cabinets, a safe and plants. */
+export function FinanceDecor() {
   return (
     <>
-      {ROWS.flatMap((z) => COLS.map((x) => <Desk key={`${x}${z}`} x={x} z={z} />))}
       {CABINETS.map((x) => (
         <Box key={x} s={[0.85, 1.3, 0.6]} m={M.cabinet} p={[x, FLOOR_Y + 0.65, -4.4]} />
       ))}
