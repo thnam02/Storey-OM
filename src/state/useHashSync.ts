@@ -1,19 +1,10 @@
 import { useEffect } from 'react';
-import { isDepartmentId } from '../data/sample';
-import { useUiStore } from './uiStore';
-
-const readHash = () => {
-  const h = window.location.hash.slice(1);
-  return isDepartmentId(h) ? h : null;
-};
+import { deptFromHash, useUiStore } from './uiStore';
 
 /** Keeps the selected department in the URL hash (#sales), like the prototype. */
 export function useHashSync() {
   useEffect(() => {
-    const { selectDept } = useUiStore.getState();
-    selectDept(readHash());
-
-    const onHash = () => useUiStore.getState().selectDept(readHash());
+    const onHash = () => useUiStore.getState().selectDept(deptFromHash());
     window.addEventListener('hashchange', onHash);
 
     const unsubscribe = useUiStore.subscribe((s, prev) => {

@@ -1,5 +1,13 @@
 import { create } from 'zustand';
+import { isDepartmentId } from '../data/sample';
 import type { DepartmentId } from '../data/types';
+
+/** Department named in the URL hash (#sales), if any. */
+export function deptFromHash(): DepartmentId | null {
+  if (typeof window === 'undefined') return null;
+  const h = window.location.hash.slice(1);
+  return isDepartmentId(h) ? h : null;
+}
 
 /**
  * UI state shared by the 3D layer and the panels. The 3D layer reads this and
@@ -19,7 +27,8 @@ export interface UiState {
 }
 
 export const useUiStore = create<UiState>()((set) => ({
-  selectedDeptId: null,
+  // Read the hash up front so a deep link opens without a camera fly-in.
+  selectedDeptId: deptFromHash(),
   hoveredDeptId: null,
   autoRotate: false,
   cameraResetTick: 0,
