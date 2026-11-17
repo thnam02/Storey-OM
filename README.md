@@ -15,7 +15,7 @@ Other scripts: `npm run build`, `npm run typecheck`, `npm test`.
 
 ### Browser tests
 
-`npm run test:e2e` runs the key flows in Chrome with Playwright (the Chrome installed on your machine; no browser download): open a floor, open a person, assign, delegate, mark done and reopen; the activity log; what each role can open; approvals; and the sign-in screen (with the auth API mocked). It starts its own dev servers on ports 5180 and 5181.
+`npm run test:e2e` runs the key flows in Chrome with Playwright (the Chrome installed on your machine; no browser download): open a floor, open a person, assign, delegate, mark done and reopen; the activity log; what each role can open; approvals; the employee's My desk; and the sign-in screen (with the auth API mocked). It starts its own dev servers on ports 5180 and 5181.
 
 `npm run test:e2e:supabase` signs in for real against a local Supabase (start it first with `npx supabase start`), reading the sign-in emails from the local test inbox. It uses port 5173, where Supabase sends sign-in links, so stop `npm run dev` first. Every change it makes is undone, so it can run again on the same database.
 
@@ -46,7 +46,7 @@ Notes on the design:
 - **Tasks link to CRM records** through `linked_type` and `linked_id`. A trigger checks that the record exists, and another keeps delegation inside a department.
 - **"Today" is pinned** to 17 Nov 2026 for the sample data (`app_settings.today`), so overdue and this-week figures keep their meaning.
 - **Changes go through database functions**: `assign_task`, `delegate_task`, `complete_task`, `reopen_task` and `decide_approval`. Each writes the change and its `activity_log` entry in one transaction. Tables have no write policies, so these functions are the only way to change data.
-- **Changes are checked by role.** Managers can assign, delegate and complete tasks only for people in their own department; only directors decide approvals.
+- **Changes are checked by role.** Everyone can add to-dos for themselves and mark their own tasks done or reopen them. Managers can also assign, delegate and complete tasks for people in their own department; only managers and directors delegate, and only directors decide approvals.
 
 ## Sign-in and roles
 
@@ -56,9 +56,12 @@ People sign in with an emailed link (Supabase Auth, no passwords). An account ac
 |---|---|---|
 | `director` | every department | tasks anywhere; approvals |
 | `manager` | their own department | tasks in their department |
+| `employee` | their own desk and tasks | their own tasks; to-dos for themselves |
 | none | nothing | nothing |
 
-Every signed-in manager can see the staff directory, departments, customers and company goals. Tasks, the activity log and each department's records (deals, campaigns, invoices, shipments, stock and so on) are limited by row-level security to the departments the viewer can see. Import & Export and the Warehouse share shipments and stock. A task's linked record keeps its label (an invoice number, a shipment code) even when the record belongs to another department. In the app, departments outside your access are locked, in 3D and in the panels.
+Everyone signed in can see the staff directory, departments, customers and company goals. Tasks, the activity log and each department's records (deals, campaigns, invoices, shipments, stock and so on) are limited by row-level security to the departments the viewer can see. Import & Export and the Warehouse share shipments and stock. A task's linked record keeps its label (an invoice number, a shipment code) even when the record belongs to another department. In the app, departments outside your access are locked, in 3D and in the panels.
+
+An employee lands on **My desk**: their own tasks, which they can mark done and reopen, and a form to add a to-do for themselves. They can open their own floor to find their desk; their teammates' name tags show no workload, and opening a teammate shows their profile without tasks. Their manager sees the to-dos they add.
 
 To give someone access, set their work email and role on their employee record:
 
@@ -77,10 +80,9 @@ Sample accounts (`firstname.lastname@storey.example`, a reserved domain, so mail
 | rachel.tan@storey.example | Manager, Finance |
 | tuan.ho@storey.example | Manager, Import & Export |
 | steve.collins@storey.example | Manager, Warehouse |
+| everyone else, e.g. huong.le@storey.example | Employee |
 
 Without a database there is no sign-in: a **View as** menu in the header picks which of these people to use the app as, and the app shows exactly what the database would show them (a test checks this for every account).
-
-The employee view (later) will add a role scoped to a person's own desk and tasks: extend `app_role` and `visible_departments()`, and add a policy on `tasks`.
 
 ## Layout
 
@@ -101,4 +103,4 @@ src/
 
 ## Status
 
-Build steps 1 to 3 are done: the 3D site, camera, hover, click and labels; floor-plan mode with generated seating, people with workload status rings and name tags; and the side panels (company overview, each department's Team and Workspace tabs, and the person view with assigning and delegating). All data is hard-coded sample data, and changes last until you reload. Step 4 added the database schema and a generated seed of the same sample data. Step 5 saves assign, delegate, mark done, reopen and approvals through database functions with an activity log, and shows recent activity in the panels. Step 6 adds sign-in and roles: directors see every department, managers their own. Without Supabase configured the app still runs on the in-memory sample, with a View as menu in place of sign-in. Step 7 (employee view, chat integration, real seating plans, cross-department requests) is next.
+Build steps 1 to 3 are done: the 3D site, camera, hover, click and labels; floor-plan mode with generated seating, people with workload status rings and name tags; and the side panels (company overview, each department's Team and Workspace tabs, and the person view with assigning and delegating). All data is hard-coded sample data, and changes last until you reload. Step 4 added the database schema and a generated seed of the same sample data. Step 5 saves assign, delegate, mark done, reopen and approvals through database functions with an activity log, and shows recent activity in the panels. Step 6 adds sign-in and roles: directors see every department, managers their own. Step 7 has started with the employee view: everyone else signs in to My desk, with their own tasks. Without Supabase configured the app still runs on the in-memory sample, with a View as menu in place of sign-in. The rest of step 7 (chat integration, real seating plans, cross-department requests) is next.
