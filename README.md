@@ -31,4 +31,4 @@ src/
 
 ## Status
 
-Build step 1 is done: the 3D site, camera, hover, click and labels, using hard-coded sample data. People, status rings and generated seating come in step 2.
+Build steps 1 and 2 are done: the 3D site, camera, hover, click and labels, plus floor-plan mode with generated seating, people with workload status rings and name tags, and a person summary. All data is hard-coded sample data. Step 3 (full panels) is next.
