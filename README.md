@@ -13,6 +13,12 @@ npm run dev
 
 Other scripts: `npm run build`, `npm run typecheck`, `npm test`.
 
+### Browser tests
+
+`npm run test:e2e` runs the key flows in Chrome with Playwright (the Chrome installed on your machine; no browser download): open a floor, open a person, assign, delegate, mark done and reopen; the activity log; what each role can open; approvals; and the sign-in screen (with the auth API mocked). It starts its own dev servers on ports 5180 and 5181.
+
+`npm run test:e2e:supabase` signs in for real against a local Supabase (start it first with `npx supabase start`), reading the sign-in emails from the local test inbox. It uses port 5173, where Supabase sends sign-in links, so stop `npm run dev` first. Every change it makes is undone, so it can run again on the same database.
+
 ## Database
 
 The schema is plain Postgres in Supabase's layout. Without a database the app runs on the built-in sample company in memory; with Supabase configured it reads everything from the database and saves changes there.
@@ -25,6 +31,7 @@ supabase/
 db/
   seed/                       builds seed.sql from the sample data in src/data
   *.test.ts                   schema, actions and app snapshot, tested in PGlite
+e2e/                          Playwright browser tests of the key flows
 ```
 
 - `npm run db:seed` regenerates `supabase/seed.sql` after the sample data changes. A test fails if it is out of date.
