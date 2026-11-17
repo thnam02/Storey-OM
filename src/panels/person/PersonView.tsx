@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { canSee } from '../../data/access';
 import { involves } from '../../data/activity';
 import { loadOf, teamWorkload } from '../../data/metrics';
 import { firstName, presenceLabel, presenceTone } from '../../data/people';
@@ -19,13 +20,13 @@ import { TaskCard } from './TaskCard';
  * with key={person.id} so messages and the delegate picker reset between people.
  */
 export function PersonView({ person }: { person: Employee }) {
-  const { team, viewerId, activity } = useSnapshot();
+  const { team, viewer, activity } = useSnapshot();
   const action = useAction();
   const { selectDept } = useUiStore.getState();
   const [msgOpen, setMsgOpen] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [delegating, setDelegating] = useState<string | null>(null);
-  const canEdit = viewerId !== null;
+  const canEdit = canSee(viewer, person.departmentId);
 
   const d = departmentById[person.departmentId];
   const load = teamWorkload(team);
@@ -52,7 +53,7 @@ export function PersonView({ person }: { person: Employee }) {
       key={t.id}
       task={t}
       today={team.today}
-      viewerId={viewerId}
+      viewerId={viewer?.id ?? null}
       canEdit={canEdit}
       nameOf={nameOf}
       targets={delegateTargets(team, t).map((p) => ({ person: p, workload: loadOf(load, p.id) }))}

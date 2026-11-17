@@ -1,9 +1,13 @@
-/** The task and approval functions: what they change, what they log, and when they refuse. */
+/**
+ * The task and approval functions: what they change, what they log, and when
+ * they refuse. Each test signs in as the managing director (who can do
+ * everything) unless it says otherwise.
+ */
 import type { PGlite } from '@electric-sql/pglite';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { SAMPLE_TEAM } from '../src/data/sampleTeam';
+import { SAMPLE_TEAM, sampleEmail } from '../src/data/sampleTeam';
 import { buildSeed } from './seed/buildSeed';
-import { createSeededDb } from './testDb';
+import { createSeededDb, signInAs } from './testDb';
 
 const seed = buildSeed();
 const emp = seed.ids.employee;
@@ -25,6 +29,7 @@ afterAll(async () => {
 // Each test runs in a transaction that is rolled back.
 beforeEach(async () => {
   await db.exec('begin');
+  await signInAs(db, sampleEmail('michael-chen'));
   return () => db.exec('rollback');
 });
 
@@ -105,29 +110,89 @@ describe('decide_approval', () => {
   });
 });
 
-describe('outside sample mode', () => {
-  it('refuses every change until sign-in exists', async () => {
-    await db.query(`update app_settings set value = 'live' where key = 'dataset'`);
-    expect(await one('select current_actor() a')).toEqual({ a: null });
-    await expect(db.query('select complete_task($1)', [openTaskOf('huong-le')])).rejects.toThrow(/Sign in/);
+describe('sign-in and roles', () => {
+  const expectRefused = async (sql: string, params: unknown[], msg: RegExp) => {
+    await db.exec('savepoint s');
+    await expect(db.query(sql, params)).rejects.toThrow(msg);
+    await db.exec('rollback to savepoint s');
+  };
+  const count = async (rel: string) => Number((await one<{ n: string }>(`select count(*)::text n from ${rel}`)).n);
+
+  it('shows nothing and allows nothing without a signed-in manager', async () => {
+    const nobody = [
+      () => signInAs(db, null),
+      () => signInAs(db, sampleEmail('rachel-tan'), { confirmed: false }),
+      () => signInAs(db, sampleEmail('huong-le')),
+      () => signInAs(db, 'someone@elsewhere.example'),
+    ];
+    for (const signIn of nobody) {
+      await signIn();
+      for (const rel of ['employees', 'tasks', 'task_list', 'deals', 'invoices', 'app_settings', 'activity_feed', 'me']) expect(await count(rel)).toBe(0);
+      await expectRefused('select complete_task($1)', [openTaskOf('huong-le')], /Sign in/);
+    }
   });
 
-  it('hides every row from API roles outside sample mode and blocks direct writes', async () => {
-    await db.exec(`create role app_reader; grant select, insert, update, delete on all tables in schema public to app_reader;`);
-    await db.exec('set role app_reader');
-    const visible = async () => Number((await one<{ n: string }>('select count(*)::text n from tasks')).n);
-    expect(await visible()).toBe(SAMPLE_TEAM.tasks.length);
-    expect(await one<{ n: string }>('select count(*)::text n from task_list')).toEqual({ n: String(SAMPLE_TEAM.tasks.length) });
-    await db.exec('reset role');
-    await db.query(`update app_settings set value = 'live' where key = 'dataset'`);
-    await db.exec('set role app_reader');
-    expect(await visible()).toBe(0);
+  it('matches the account to its employee by confirmed email, in any case', async () => {
+    await signInAs(db, 'Rachel.Tan@Storey.example');
+    expect(await one('select * from me')).toEqual({ slug: 'rachel-tan', access: 'manager', department_id: 'finance' });
+  });
+
+  it("lets a manager read only their department's tasks and records", async () => {
+    await signInAs(db, sampleEmail('rachel-tan'));
+    const depts = (await db.query<{ d: string }>('select distinct e.department_id d from tasks t join employees e on e.id = t.assignee_id')).rows;
+    expect(depts).toEqual([{ d: 'finance' }]);
+    expect(await count('employees')).toBe(SAMPLE_TEAM.employees.length);
+    expect(await count('invoices')).toBeGreaterThan(0);
+    for (const rel of ['deals', 'campaigns', 'shipments', 'products']) expect(await count(rel)).toBe(0);
+    // A Finance task about a shipment still shows the shipment's code.
+    expect(await one(`select linked_label from task_list where title = 'Pay sea freight for IMP-1182'`)).toEqual({ linked_label: 'IMP-1182' });
+  });
+
+  it('shares shipments and stock between Import & Export and the Warehouse', async () => {
+    for (const slug of ['tuan-ho', 'steve-collins']) {
+      await signInAs(db, sampleEmail(slug));
+      for (const rel of ['shipments', 'products', 'warehouse_zones', 'stock_movements']) expect(await count(rel)).toBeGreaterThan(0);
+      expect(await count('invoices')).toBe(0);
+    }
+  });
+
+  it("lets a manager act on their own department's tasks only", async () => {
+    await signInAs(db, sampleEmail('rachel-tan'));
+    await db.query('select complete_task($1)', [openTaskOf('hannah-brooks')]);
+    await db.query('select delegate_task($1, $2)', [openTaskOf('lan-phan'), emp('duc-nguyen')]);
+    await db.query(`select assign_task($1, 'Check the GST figures', '2026-11-19')`, [emp('trang-vu')]);
+    await expectRefused('select complete_task($1)', [openTaskOf('huong-le')], /your own department/);
+    await expectRefused(`select assign_task($1, 'x', '2026-11-19')`, [emp('huong-le')], /your own department/);
+    await expectRefused('select delegate_task($1, $2)', [openTaskOf('huong-le'), emp('minh-tran')], /your own department/);
+    expect((await log()).map((l) => `${l.action} ${l.actor_slug}`)).toEqual(['complete rachel-tan', 'delegate rachel-tan', 'assign rachel-tan']);
+  });
+
+  it('lets only directors decide approvals; requesters see their own requests', async () => {
+    const id = (await one<{ id: string }>(`select id from approvals where requested_by_department = 'marketing'`)).id;
+    await signInAs(db, sampleEmail('emma-lawson'));
+    expect((await db.query<{ requested_by_department: string }>('select requested_by_department from approvals')).rows.every((a) => a.requested_by_department === 'marketing')).toBe(true);
+    await expectRefused(`select decide_approval($1, 'approved')`, [id], /Only directors/);
+    await signInAs(db, sampleEmail('andrew-walsh'));
+    expect(await one(`select state from decide_approval($1, 'approved')`, [id])).toEqual({ state: 'approved' });
+  });
+
+  it("shows activity only about records the viewer can see", async () => {
+    await signInAs(db, sampleEmail('rachel-tan'));
+    await db.query('select complete_task($1)', [openTaskOf('hannah-brooks')]);
+    await signInAs(db, sampleEmail('daniel-reid'));
+    await db.query('select complete_task($1)', [openTaskOf('huong-le')]);
+    expect((await log()).map((l) => l.actor_slug)).toEqual(['daniel-reid']);
+    await signInAs(db, sampleEmail('thao-nguyen'));
+    expect((await log()).map((l) => l.actor_slug)).toEqual(['rachel-tan', 'daniel-reid']);
+  });
+
+  it('blocks direct writes: changes go through the functions', async () => {
+    await signInAs(db, sampleEmail('michael-chen'));
     await db.exec('savepoint s');
     // No write policies: updates match no rows; inserts are refused.
     await db.query(`update tasks set title = 'x'`);
     await expect(db.query(`insert into customers (name) values ('x')`)).rejects.toThrow(/row-level security/);
     await db.exec('rollback to savepoint s');
-    await db.exec('reset role');
-    expect(Number((await one<{ n: string }>(`select count(*)::text n from tasks where title = 'x'`)).n)).toBe(0);
+    expect(await count(`tasks where title = 'x'`)).toBe(0);
   });
 });

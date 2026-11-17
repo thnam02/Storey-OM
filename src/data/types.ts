@@ -148,6 +148,9 @@ export interface CompanyData {
 
 export type Presence = 'at_desk' | 'in_meeting' | 'away' | 'on_floor' | 'off_shift';
 
+/** App access: a director sees every department, a manager their own. */
+export type AppRole = 'director' | 'manager';
+
 export interface Employee {
   id: string;
   departmentId: DepartmentId;
@@ -155,6 +158,8 @@ export interface Employee {
   role: string;
   presence: Presence;
   isManager: boolean;
+  /** Who can use the app, and what they see. null: no access. */
+  access: AppRole | null;
   /** What they are doing on the floor, when it changes how they are drawn. */
   activity?: 'forklift';
 }

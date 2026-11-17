@@ -12,4 +12,13 @@ export function createDataSource(env: Record<string, string | undefined> = impor
   return url && key ? createSupabaseSource(url, key) : createSampleSource();
 }
 
-export type { Action, DataSource, Snapshot } from './types';
+/** Whether the configured Supabase runs on this machine (its emails go to a local test inbox). */
+export const supabaseIsLocal = (() => {
+  try {
+    return ['localhost', '127.0.0.1'].includes(new URL(import.meta.env.VITE_SUPABASE_URL ?? '').hostname);
+  } catch {
+    return false;
+  }
+})();
+
+export type { Account, Action, DataSource, Snapshot } from './types';

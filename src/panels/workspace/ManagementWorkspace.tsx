@@ -1,3 +1,4 @@
+import { canDecideApprovals } from '../../data/access';
 import { peopleIn, q4Revenue, revenueThisYear, teamWorkload, totals } from '../../data/metrics';
 import { DEPARTMENTS } from '../../data/sample';
 import type { ApprovalState } from '../../data/types';
@@ -12,7 +13,7 @@ import { Chip, DeptLink, Kpi, Section } from '../ui';
 export function ManagementWorkspace() {
   const data = useSnapshot().company;
   const team = useSnapshot().team;
-  const viewerId = useSnapshot().viewerId;
+  const canDecide = canDecideApprovals(useSnapshot().viewer);
   const action = useAction();
   const setApproval = (approvalId: string, state: ApprovalState) => action.mutate({ type: 'decide', approvalId, state });
   const G = data.management;
@@ -39,7 +40,7 @@ export function ManagementWorkspace() {
                 {a.amt ? ` · ${formatMoney(a.amt)}` : ''}
               </span>
               <div className="acts">
-                {viewerId === null ? (
+                {!canDecide ? (
                   <Chip tone={a.state === 'approved' ? 'ok' : a.state === 'declined' ? 'muted' : 'warn'}>
                     {a.state === 'approved' ? 'Approved' : a.state === 'declined' ? 'Declined' : 'Waiting'}
                   </Chip>

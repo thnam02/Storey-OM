@@ -4,9 +4,10 @@
  */
 import { addDays, formatDay, weekday } from '../../lib/dates';
 import { wallTime, zonedParts } from '../../lib/zonedTime';
+import type { Viewer } from '../access';
 import type { ActivityAction, ActivityEntry } from '../activity';
 import type {
-  Approval, ApprovalState, Campaign, CompanyData, DepartmentId, Employee, LinkedType, Presence, Shipment, ShipmentStatus, Task, TaskStatus,
+  AppRole, Approval, ApprovalState, Campaign, CompanyData, DepartmentId, Employee, LinkedType, Presence, Shipment, ShipmentStatus, Task, TaskStatus,
 } from '../types';
 import { shortName } from '../workload';
 import type { Snapshot } from './types';
@@ -16,7 +17,11 @@ type Day = string;
 
 export interface DbRows {
   app_settings: { key: string; value: string }[];
-  employees: { id: string; slug: string; department_id: DepartmentId; name: string; role: string; presence: Presence; activity: string | null; is_manager: boolean }[];
+  me: { slug: string; access: AppRole; department_id: DepartmentId }[];
+  employees: {
+    id: string; slug: string; department_id: DepartmentId; name: string; role: string; presence: Presence; activity: string | null;
+    is_manager: boolean; access: AppRole | null;
+  }[];
   task_list: {
     id: string; title: string; status: TaskStatus; due_date: Day; done_at: string | null;
     assignee_slug: string; created_by_slug: string | null; delegated_from_slug: string | null;
@@ -45,6 +50,7 @@ export interface DbRows {
 /** How each relation is read: [column, ascending] ordering and an optional row limit. */
 export const RELATIONS: { [K in keyof DbRows]: { order?: [string, boolean][]; limit?: number } } = {
   app_settings: {},
+  me: {},
   employees: { order: [['list_order', true], ['name', true]] },
   task_list: { order: [['created_at', true], ['title', true]] },
   deal_list: {},
@@ -88,6 +94,7 @@ export function toSnapshot(rows: DbRows): Snapshot {
     role: e.role,
     presence: e.presence,
     isManager: e.is_manager,
+    access: e.access,
     ...(e.activity === 'forklift' ? { activity: 'forklift' as const } : {}),
   }));
   const tasks: Task[] = rows.task_list.map((t) => ({
@@ -220,6 +227,9 @@ export function toSnapshot(rows: DbRows): Snapshot {
     },
   };
 
+  const me = rows.me[0];
+  const viewer: Viewer | null = me ? { id: me.slug, role: me.access, departmentId: me.department_id } : null;
+
   const activity: ActivityEntry[] = rows.activity_feed.map((a) => ({
     id: String(a.id),
     at: wallTime(a.created_at, timezone),
@@ -236,9 +246,14 @@ export function toSnapshot(rows: DbRows): Snapshot {
   return {
     company,
     team: { employees, tasks, today, weekStart },
-    viewerId: setting('viewer'),
+    viewer,
     isSample: setting('dataset') === 'sample',
     timezone,
     activity,
   };
 }
+
+/** Every figure as the database gives it with no rows: what a viewer gets for a department they cannot see. */
+export const EMPTY_COMPANY: CompanyData = toSnapshot(
+  Object.fromEntries(Object.keys(RELATIONS).map((k) => [k, []])) as unknown as DbRows,
+).company;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { viewerOf } from '../access';
 import { describeActivity } from '../activity';
 import { SAMPLE_DATA } from '../sample';
 import { SAMPLE_TEAM, SAMPLE_VIEWER_ID } from '../sampleTeam';
@@ -8,10 +9,11 @@ import { createDataSource } from './index';
 import { createSampleSource } from './sampleSource';
 import type { Snapshot } from './types';
 
-const base: Snapshot = { company: SAMPLE_DATA, team: SAMPLE_TEAM, viewerId: SAMPLE_VIEWER_ID, isSample: true, timezone: 'Australia/Sydney', activity: [] };
+const as = (id: string) => viewerOf(SAMPLE_TEAM.employees, id);
+const base: Snapshot = { company: SAMPLE_DATA, team: SAMPLE_TEAM, viewer: as(SAMPLE_VIEWER_ID), isSample: true, timezone: 'Australia/Sydney', activity: [] };
 const ctx = { at: '2026-11-17T14:05', entryId: 'e1' };
 const names = new Map(SAMPLE_TEAM.employees.map((e) => [e.id, e.name]));
-const say = (s: Snapshot) => s.activity.map((e) => describeActivity(e, (id) => names.get(id) ?? id, s.viewerId));
+const say = (s: Snapshot) => s.activity.map((e) => describeActivity(e, (id) => names.get(id) ?? id, s.viewer?.id ?? null));
 const load = (s: Snapshot, id: string) => workloadOf(s.team.tasks.filter((t) => t.assigneeId === id), s.team.today, s.team.weekStart);
 const hannahsOverdue = SAMPLE_TEAM.tasks.find((t) => t.assigneeId === 'hannah-brooks' && t.linked?.id === 'INV-2041')!;
 
@@ -51,7 +53,17 @@ describe('applyAction', () => {
   });
 
   it('refuses changes when nobody is signed in', () => {
-    expect(() => applyAction({ ...base, viewerId: null }, { type: 'complete', taskId: hannahsOverdue.id }, ctx)).toThrow(/Sign in/);
+    expect(() => applyAction({ ...base, viewer: null }, { type: 'complete', taskId: hannahsOverdue.id }, ctx)).toThrow(/Sign in/);
+  });
+
+  it('keeps managers to their own department, and approvals to directors (as the database does)', () => {
+    const rachel = { ...base, viewer: as('rachel-tan') };
+    expect(applyAction(rachel, { type: 'complete', taskId: hannahsOverdue.id }, ctx).activity).toHaveLength(1);
+    const huongs = SAMPLE_TEAM.tasks.find((t) => t.assigneeId === 'huong-le' && t.status !== 'done')!;
+    expect(() => applyAction(rachel, { type: 'complete', taskId: huongs.id }, ctx)).toThrow(/your own department/);
+    expect(() => applyAction(rachel, { type: 'assign', assigneeId: 'huong-le', title: 'x', dueDate: '2026-11-18' }, ctx)).toThrow(/your own department/);
+    expect(() => applyAction(rachel, { type: 'decide', approvalId: 'a2', state: 'approved' }, ctx)).toThrow(/Only directors/);
+    expect(as('huong-le')).toBeNull();
   });
 });
 
@@ -60,6 +72,20 @@ describe('data sources', () => {
     expect(createDataSource({}).kind).toBe('sample');
     expect(createDataSource({ VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_SUPABASE_KEY: '  ' }).kind).toBe('sample');
     expect(createDataSource({ VITE_SUPABASE_URL: 'http://127.0.0.1:54321', VITE_SUPABASE_KEY: 'key' }).kind).toBe('supabase');
+  });
+
+  it("shows the sample as the picked person sees it, and says who's signed in", async () => {
+    const src = createSampleSource();
+    expect(await src.account()).toEqual({ email: 'michael.chen@storey.example' });
+    let changed = 0;
+    src.onAccountChange(() => changed++);
+    src.viewAs!('daniel-reid');
+    const s = await src.load();
+    expect([changed, s.viewer?.role, (await src.account())?.email]).toEqual([1, 'manager', 'daniel.reid@storey.example']);
+    const depts = new Set(s.team.tasks.map((t) => s.team.employees.find((e) => e.id === t.assigneeId)!.departmentId));
+    expect([...depts]).toEqual(['sales']);
+    expect(s.company.finance.invoices).toEqual([]);
+    expect(() => src.viewAs!('huong-le')).toThrow(/no access/);
   });
 
   it('keeps sample changes until reload and rejects refused ones', async () => {

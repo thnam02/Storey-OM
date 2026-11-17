@@ -5,7 +5,7 @@
  */
 import { createRandom } from '../lib/seededRandom';
 import { SAMPLE_DATA } from './sample';
-import type { DepartmentId, Employee, LinkedRecord, LinkedType, Presence, Task, TaskStatus, TeamData } from './types';
+import type { AppRole, DepartmentId, Employee, LinkedRecord, LinkedType, Presence, Task, TaskStatus, TeamData } from './types';
 
 /** "Today" and the start of this week in the sample data. */
 export const SAMPLE_TODAY = '2026-11-17';
@@ -85,6 +85,16 @@ const TEMPLATES: Record<DepartmentId, string[]> = {
 };
 const PORTS = ['Auckland', 'Singapore', 'Ho Chi Minh City', 'Osaka', 'Los Angeles'];
 
+/** Sample app access: department heads manage their department; the managing, operations and finance directors see everything. */
+const DIRECTORS = ['Thao Nguyen', 'Andrew Walsh'];
+function accessOf(dept: DepartmentId, name: string, isHead: boolean): AppRole | null {
+  if (isHead) return dept === 'management' ? 'director' : 'manager';
+  return DIRECTORS.includes(name) ? 'director' : null;
+}
+
+/** Sample work email for a person, e.g. sam.o.brien@storey.example (a reserved domain, so nothing is ever delivered). */
+export const sampleEmail = (personId: string) => `${personId.replace(/-/g, '.')}@storey.example`;
+
 export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 /** Day number (1 = 1 Nov 2026, 31 = 1 Dec) to an ISO date. */
@@ -137,10 +147,10 @@ function buildTeam() {
       if (cfg.driver === name) { presence = 'on_floor'; activity = 'forklift'; }
       else if (cfg.meet.includes(name)) presence = 'in_meeting';
       else if (i >= n - cfg.walk) presence = dept === 'warehouse' ? 'on_floor' : 'away';
-      employees.push({ id: slug(name), departmentId: dept, name, role, presence, isManager: i === 0, ...(activity ? { activity } : {}) });
+      employees.push({ id: slug(name), departmentId: dept, name, role, presence, isManager: i === 0, access: accessOf(dept, name, i === 0), ...(activity ? { activity } : {}) });
     });
     (cfg.offShift ?? []).forEach(([name, role]) =>
-      employees.push({ id: slug(name), departmentId: dept, name, role, presence: 'off_shift', isManager: false }),
+      employees.push({ id: slug(name), departmentId: dept, name, role, presence: 'off_shift', isManager: false, access: null }),
     );
   });
 
@@ -187,5 +197,5 @@ export const SAMPLE_TEAM: TeamData = {
   weekStart: SAMPLE_WEEK_START,
 };
 
-/** The manager using the app in the sample: Michael Chen, managing director. */
+/** Who uses the app in the sample until someone else is picked: Michael Chen, managing director. */
 export const SAMPLE_VIEWER_ID = 'michael-chen';

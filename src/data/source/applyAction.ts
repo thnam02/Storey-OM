@@ -1,3 +1,4 @@
+import { canDecideApprovals, canSee } from '../access';
 import type { ActivityEntry } from '../activity';
 import { assignTask, completeTask, delegateTargets, delegateTask, reopenTask, setApprovalState } from '../taskOps';
 import type { Action, Snapshot } from './types';
@@ -17,17 +18,29 @@ export interface ActionContext {
  * to change.
  */
 export function applyAction(snap: Snapshot, action: Action, ctx: ActionContext): Snapshot {
-  if (!snap.viewerId) throw new Error('Sign in to make changes');
+  const { viewer, team } = snap;
+  if (!viewer) throw new Error('Sign in to make changes');
   const entry = (e: Omit<ActivityEntry, 'id' | 'at' | 'actorId'>): ActivityEntry[] => [
-    { id: ctx.entryId, at: ctx.at, actorId: snap.viewerId, ...e },
+    { id: ctx.entryId, at: ctx.at, actorId: viewer.id, ...e },
     ...snap.activity,
   ];
-  const { team } = snap;
+  const requireDepartmentOf = (personId: string) => {
+    const person = team.employees.find((e) => e.id === personId);
+    if (!person || !canSee(viewer, person.departmentId)) throw new Error('You can only manage tasks in your own department');
+  };
+  const findTask = (id: string) => {
+    const task = team.tasks.find((t) => t.id === id);
+    if (!task) throw new Error('Task not found');
+    requireDepartmentOf(task.assigneeId);
+    return task;
+  };
 
   switch (action.type) {
     case 'assign': {
+      if (!team.employees.some((e) => e.id === action.assigneeId)) throw new Error('That person is not in the company');
+      requireDepartmentOf(action.assigneeId);
       if (!action.title.trim()) throw new Error('Enter what needs doing');
-      const r = assignTask(team, { assigneeId: action.assigneeId, title: action.title, dueDate: action.dueDate, createdById: snap.viewerId });
+      const r = assignTask(team, { assigneeId: action.assigneeId, title: action.title, dueDate: action.dueDate, createdById: viewer.id });
       if (!r.task) throw new Error('That person is not in the company');
       return {
         ...snap,
@@ -36,8 +49,7 @@ export function applyAction(snap: Snapshot, action: Action, ctx: ActionContext):
       };
     }
     case 'delegate': {
-      const task = team.tasks.find((t) => t.id === action.taskId);
-      if (!task) throw new Error('Task not found');
+      const task = findTask(action.taskId);
       if (task.status === 'done') throw new Error('Only open tasks can be delegated');
       if (task.assigneeId === action.toId) throw new Error('The task is already with that person');
       if (!delegateTargets(team, task).some((e) => e.id === action.toId)) throw new Error('Tasks can only be delegated within a department');
@@ -50,8 +62,7 @@ export function applyAction(snap: Snapshot, action: Action, ctx: ActionContext):
     }
     case 'complete':
     case 'reopen': {
-      const task = team.tasks.find((t) => t.id === action.taskId);
-      if (!task) throw new Error('Task not found');
+      const task = findTask(action.taskId);
       if ((task.status === 'done') === (action.type === 'complete')) return snap;
       const r = action.type === 'complete' ? completeTask(team, task.id, ctx.at.slice(0, 10)) : reopenTask(team, task.id);
       return {
@@ -61,6 +72,7 @@ export function applyAction(snap: Snapshot, action: Action, ctx: ActionContext):
       };
     }
     case 'decide': {
+      if (!canDecideApprovals(viewer)) throw new Error('Only directors can decide approvals');
       const approval = snap.company.management.approvals.find((a) => a.id === action.approvalId);
       if (!approval) throw new Error('Approval not found');
       if (approval.state === action.state) return snap;
