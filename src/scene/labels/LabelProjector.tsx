@@ -14,8 +14,12 @@ export function LabelProjector() {
 
   useFrame(() => {
     const { width: w, height: h } = size;
-    labelAnchors.forEach(({ el, position, align }) => {
-      v.set(...position).project(camera);
+    labelAnchors.forEach(({ el, align, resolve }) => {
+      if (!resolve(v)) {
+        el.style.visibility = 'hidden';
+        return;
+      }
+      v.project(camera);
       const x = ((v.x + 1) / 2) * w;
       const y = ((1 - v.y) / 2) * h;
       const off = x < -MARGIN_X || x > w + MARGIN_X || y < -MARGIN_Y || y > h + MARGIN_Y;

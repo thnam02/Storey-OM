@@ -1,5 +1,7 @@
+import type { CSSProperties } from 'react';
 import { IS_SAMPLE_DATA, SAMPLE_DATA } from './data/sample';
 import { SAMPLE_TEAM } from './data/sampleTeam';
+import { WORKLOAD_STATE } from './data/workload';
 import { PanelShell } from './panels/PanelShell';
 import { SiteCanvas } from './scene/SiteCanvas';
 import { useHashSync } from './state/useHashSync';
@@ -50,9 +52,19 @@ export default function App() {
           <SiteCanvas data={data} team={team} />
           <div className="hint">
             {selected
-              ? 'Drag to rotate · Scroll to zoom · Click another floor to switch'
+              ? 'Click a person to see their tasks · Drag to rotate · Scroll to zoom'
               : 'Drag to rotate · Right-drag to pan · Scroll to zoom · Click a floor or the warehouse'}
           </div>
+          {selected && (
+            <div className="legend" aria-hidden="true">
+              {(['ok', 'busy', 'late'] as const).map((k) => (
+                <span key={k}>
+                  <i style={{ '--w': WORKLOAD_STATE[k].color } as CSSProperties} />
+                  {k === 'late' ? 'Overdue tasks' : WORKLOAD_STATE[k].label}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <aside className="panel" aria-live="polite">
           <PanelShell data={data} team={team} />

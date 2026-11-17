@@ -9,6 +9,7 @@ import { useUiStore } from '../state/uiStore';
 import { CameraRig } from './CameraRig';
 import { DeptLabel } from './labels/DeptLabel';
 import { LabelProjector } from './labels/LabelProjector';
+import { PersonTag } from './labels/PersonTag';
 import { Lights } from './Lights';
 import { OfficeBuilding } from './office/OfficeBuilding';
 import { Ground } from './site/Ground';
@@ -38,8 +39,14 @@ export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }
   const fontsReady = useFontsReady();
   const reducedMotion = useReducedMotion();
   const hoverDept = useUiStore((s) => s.hoverDept);
+  const openDept = useUiStore((s) => s.selectedDeptId);
   const load = useMemo(() => workloadByEmployee(team.employees, team.tasks, team.today, team.weekStart), [team]);
   const warehouseTeam = useMemo(() => team.employees.filter((e) => e.departmentId === 'warehouse'), [team.employees]);
+  // Name tags for everyone on site on the open floor.
+  const tagged = useMemo(
+    () => team.employees.filter((e) => e.departmentId === openDept && e.presence !== 'off_shift'),
+    [team.employees, openDept],
+  );
 
   if (!fontsReady) return null;
 
@@ -69,6 +76,9 @@ export function SiteCanvas({ data, team }: { data: CompanyData; team: TeamData }
       <div className="labels">
         {DEPARTMENTS.map((d) => (
           <DeptLabel key={d.id} dept={d} flagged={departmentStatus(d.id, data).tone === 'warn'} />
+        ))}
+        {tagged.map((e) => (
+          <PersonTag key={e.id} person={e} workload={load.get(e.id)!} />
         ))}
       </div>
     </>

@@ -1,11 +1,12 @@
-import type { Vec3 } from '../constants';
+import type * as THREE from 'three';
 
 export type LabelAlign = 'left' | 'top';
 
 export interface LabelAnchor {
   el: HTMLElement;
-  position: Vec3;
   align: LabelAlign;
+  /** Writes the label's 3D point into `out`; false hides the label this frame. */
+  resolve: (out: THREE.Vector3) => boolean;
 }
 
 /**

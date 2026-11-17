@@ -3,19 +3,25 @@ import { DEPARTMENTS, departmentById, SAMPLE_TODAY_LABEL } from '../data/sample'
 import { departmentStatus } from '../data/status';
 import type { CompanyData, Department, TeamData } from '../data/types';
 import { useUiStore } from '../state/uiStore';
+import { PersonSummary } from './PersonSummary';
 
 const accent = (d: Department) => ({ '--c': d.color }) as CSSProperties;
 const where = (d: Department) => (d.level ? `Level ${d.level}` : 'Warehouse building');
 
 /**
- * Placeholder side panel for step 1: the department list and a header for the
- * open department. The Team and Workspace tabs and the person view come in step 3.
+ * Placeholder side panel: the department list, a header for the open
+ * department, and a person summary. Team and Workspace tabs and the full
+ * person view come in step 3.
  */
 export function PanelShell({ data, team }: { data: CompanyData; team: TeamData }) {
   const headcount = (id: Department['id']) => team.employees.filter((e) => e.departmentId === id).length;
   const selected = useUiStore((s) => s.selectedDeptId);
+  const selectedPerson = useUiStore((s) => s.selectedEmployeeId);
   const hovered = useUiStore((s) => s.hoveredDeptId);
   const { selectDept, hoverDept } = useUiStore.getState();
+
+  const person = selectedPerson ? team.employees.find((e) => e.id === selectedPerson) : undefined;
+  if (person) return <PersonSummary person={person} team={team} />;
 
   if (selected) {
     const d = departmentById[selected];
@@ -41,7 +47,7 @@ export function PanelShell({ data, team }: { data: CompanyData; team: TeamData }
         </div>
         <div className="pb">
           <div className="note">
-            The Team and Workspace tabs for {d.name} are coming next. For now, use the floor view on the left, or go back to the{' '}
+            Click a person on the floor plan to see how they're doing. The Team and Workspace tabs for {d.name} are coming next. Or go back to the{' '}
             <button type="button" className="link" onClick={() => selectDept(null)}>
               whole building
             </button>

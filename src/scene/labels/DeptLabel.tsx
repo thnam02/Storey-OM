@@ -25,9 +25,10 @@ export function DeptLabel({ dept, flagged }: Props) {
       if (!el) return;
       const view = buildingView(dept.id, dept.level);
       el.style.visibility = 'hidden'; // until the first projection
-      labelAnchors.set(dept.id, { el, position: view.labelAnchor, align: view.labelAlign });
+      const [x, y, z] = view.labelAnchor;
+      labelAnchors.set(`dept:${dept.id}`, { el, align: view.labelAlign, resolve: (out) => (out.set(x, y, z), true) });
       return () => {
-        labelAnchors.delete(dept.id);
+        labelAnchors.delete(`dept:${dept.id}`);
       };
     },
     [dept.id, dept.level],
