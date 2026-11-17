@@ -66,3 +66,21 @@ export function setApprovalState(company: CompanyData, id: string, state: Approv
     management: { ...company.management, approvals: approvals.map((a) => (a.id === id ? { ...a, state } : a)) },
   };
 }
+
+/** Mark an open task done on `doneOn` (YYYY-MM-DD). Already-done tasks are left as they are. */
+export function completeTask(team: TeamData, taskId: string, doneOn: string): { team: TeamData; task: Task | null } {
+  const task = team.tasks.find((t) => t.id === taskId);
+  if (!task) return { team, task: null };
+  if (task.status === 'done') return { team, task };
+  const done: Task = { ...task, status: 'done', doneAt: doneOn };
+  return { team: { ...team, tasks: team.tasks.map((t) => (t.id === taskId ? done : t)) }, task: done };
+}
+
+/** Put a done task back on the to-do list. Open tasks are left as they are. */
+export function reopenTask(team: TeamData, taskId: string): { team: TeamData; task: Task | null } {
+  const task = team.tasks.find((t) => t.id === taskId);
+  if (!task) return { team, task: null };
+  if (task.status !== 'done') return { team, task };
+  const open: Task = { ...task, status: 'todo', doneAt: null };
+  return { team: { ...team, tasks: team.tasks.map((t) => (t.id === taskId ? open : t)) }, task: open };
+}

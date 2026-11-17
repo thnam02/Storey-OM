@@ -49,7 +49,7 @@ export interface Campaign {
   channel: string;
   leads: number;
   cpl: number;
-  status: 'Live' | 'Ended';
+  status: 'Live' | 'Planned' | 'Ended';
 }
 
 export interface MarketingData {
@@ -100,7 +100,7 @@ export interface Shipment {
   id: string;
   dir: 'Import' | 'Export';
   route: string;
-  mode: 'Sea' | 'Air';
+  mode: 'Sea' | 'Air' | 'Road';
   load: string;
   eta: string;
   status: ShipmentStatus;
