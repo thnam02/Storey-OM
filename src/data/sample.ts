@@ -30,16 +30,6 @@ export const OFFICE_FLOORS = DEPARTMENTS.filter((d) => d.building === 'office').
   (a, b) => a.level - b.level,
 );
 
-/** Headcount per department (on site + off shift), from the prototype's staff lists. */
-export const HEADCOUNT: Record<DepartmentId, number> = {
-  'import-export': 9,
-  sales: 14,
-  marketing: 7,
-  finance: 6,
-  management: 5,
-  warehouse: 23,
-};
-
 export const SAMPLE_DATA: CompanyData = {
   sales: {
     stages: [

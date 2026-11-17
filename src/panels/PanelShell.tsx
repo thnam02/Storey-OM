@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
-import { DEPARTMENTS, departmentById, HEADCOUNT, SAMPLE_TODAY_LABEL } from '../data/sample';
+import { DEPARTMENTS, departmentById, SAMPLE_TODAY_LABEL } from '../data/sample';
 import { departmentStatus } from '../data/status';
-import type { CompanyData, Department } from '../data/types';
+import type { CompanyData, Department, TeamData } from '../data/types';
 import { useUiStore } from '../state/uiStore';
 
 const accent = (d: Department) => ({ '--c': d.color }) as CSSProperties;
@@ -11,7 +11,8 @@ const where = (d: Department) => (d.level ? `Level ${d.level}` : 'Warehouse buil
  * Placeholder side panel for step 1: the department list and a header for the
  * open department. The Team and Workspace tabs and the person view come in step 3.
  */
-export function PanelShell({ data }: { data: CompanyData }) {
+export function PanelShell({ data, team }: { data: CompanyData; team: TeamData }) {
+  const headcount = (id: Department['id']) => team.employees.filter((e) => e.departmentId === id).length;
   const selected = useUiStore((s) => s.selectedDeptId);
   const hovered = useUiStore((s) => s.hoveredDeptId);
   const { selectDept, hoverDept } = useUiStore.getState();
@@ -59,7 +60,7 @@ export function PanelShell({ data }: { data: CompanyData }) {
         </div>
         <h2>Company overview</h2>
         <div className="status">
-          <span className="sub">5 office departments and the warehouse</span>
+          <span className="sub">{team.employees.length} people across 5 office departments and the warehouse</span>
         </div>
       </div>
       <div className="pb">
@@ -84,7 +85,7 @@ export function PanelShell({ data }: { data: CompanyData }) {
                   <b>{d.name}</b>
                   <span className={`chip ${st.tone}`}>{st.chip}</span>
                   <span className="sub">
-                    {where(d)} · {HEADCOUNT[d.id]} people · {st.text}
+                    {where(d)} · {headcount(d.id)} people · {st.text}
                   </span>
                 </button>
               );

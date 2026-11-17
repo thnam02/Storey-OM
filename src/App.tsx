@@ -1,4 +1,5 @@
 import { IS_SAMPLE_DATA, SAMPLE_DATA } from './data/sample';
+import { SAMPLE_TEAM } from './data/sampleTeam';
 import { PanelShell } from './panels/PanelShell';
 import { SiteCanvas } from './scene/SiteCanvas';
 import { useHashSync } from './state/useHashSync';
@@ -20,6 +21,7 @@ export default function App() {
   const autoRotate = useUiStore((s) => s.autoRotate);
   const { selectDept, resetCamera, toggleAutoRotate } = useUiStore.getState();
   const data = SAMPLE_DATA;
+  const team = SAMPLE_TEAM;
 
   return (
     <>
@@ -53,7 +55,7 @@ export default function App() {
           </div>
         </div>
         <aside className="panel" aria-live="polite">
-          <PanelShell data={data} />
+          <PanelShell data={data} team={team} />
         </aside>
       </main>
     </>

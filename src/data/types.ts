@@ -143,3 +143,50 @@ export interface CompanyData {
   importExport: ImportExportData;
   warehouse: WarehouseData;
 }
+
+/* ---------- people and tasks ---------- */
+
+export type Presence = 'at_desk' | 'in_meeting' | 'away' | 'on_floor' | 'off_shift';
+
+export interface Employee {
+  id: string;
+  departmentId: DepartmentId;
+  name: string;
+  role: string;
+  presence: Presence;
+  isManager: boolean;
+  /** What they are doing on the floor, when it changes how they are drawn. */
+  activity?: 'forklift';
+}
+
+export type TaskStatus = 'todo' | 'doing' | 'done';
+
+/** CRM record a task is about. Tasks linking to records is central to the product. */
+export type LinkedType = 'deal' | 'invoice' | 'bill' | 'shipment' | 'product' | 'approval' | 'campaign' | 'order';
+
+export interface LinkedRecord {
+  type: LinkedType;
+  id: string;
+  label: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  /** ISO date, YYYY-MM-DD. */
+  dueDate: string;
+  doneAt: string | null;
+  assigneeId: string;
+  createdById: string | null;
+  delegatedFromId: string | null;
+  linked: LinkedRecord | null;
+}
+
+/** People, their tasks, and the dates workload is measured against. */
+export interface TeamData {
+  employees: Employee[];
+  tasks: Task[];
+  today: string;
+  weekStart: string;
+}
