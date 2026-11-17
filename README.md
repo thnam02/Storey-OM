@@ -31,4 +31,4 @@ src/
 
 ## Status
 
-Build steps 1 and 2 are done: the 3D site, camera, hover, click and labels, plus floor-plan mode with generated seating, people with workload status rings and name tags, and a person summary. All data is hard-coded sample data. Step 3 (full panels) is next.
+Build steps 1 to 3 are done: the 3D site, camera, hover, click and labels; floor-plan mode with generated seating, people with workload status rings and name tags; and the side panels (company overview, each department's Team and Workspace tabs, and the person view with assigning and delegating). All data is hard-coded sample data, and changes last until you reload. Step 4 (database schema and seed) is next.
