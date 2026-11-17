@@ -1,0 +1,17 @@
+/* Design tokens, taken from prototype/index.html */
+:root {
+  --ink: #1d2830;
+  --muted: #5d6b75;
+  --paper: #ffffff;
+  --wash: #f1f4f5;
+  --line: #dbe2e6;
+  --accent: #2c6a86;
+  --accent-strong: #235a72;
+  --ok: #2e8b57;
+  --busy: #d99a1e;
+  --late: #c2453b;
+  --display: 'Sora', 'Segoe UI', system-ui, sans-serif;
+  --body: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
