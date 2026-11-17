@@ -74,7 +74,7 @@ const SPECIFIC: Record<string, [string, string | null, TaskStatus, number][]> = 
   'Nathan Ward': [['Receive thermal paper delivery', 'IMP-1179', 'todo', 22], ['Put away 2 pallets of SKU-2210', 'SKU-2210', 'done', 17]],
 };
 
-const CUSTOMERS = ['Harbourline Retail', 'Mekong Fresh Foods', 'Pacific Medical Supplies', 'Sapa Coffee Co.', 'Bondi Outfitters', 'Northside Pharmacy', 'Bay Street Bakery', 'Lotus Grocers', 'Coastal Hardware', 'Parramatta Books', 'Hanoi Kitchen', 'Glebe Cycles'];
+export const SAMPLE_CUSTOMERS = ['Harbourline Retail', 'Mekong Fresh Foods', 'Pacific Medical Supplies', 'Sapa Coffee Co.', 'Bondi Outfitters', 'Northside Pharmacy', 'Bay Street Bakery', 'Lotus Grocers', 'Coastal Hardware', 'Parramatta Books', 'Hanoi Kitchen', 'Glebe Cycles'];
 const TEMPLATES: Record<DepartmentId, string[]> = {
   sales: ['Follow up with {co} after the demo', 'Send updated quote to {co}', 'Prepare demo for {co}', 'Log call notes for {co}', 'Call back new lead: {co}', 'Renewal check-in with {co}', 'Book a site visit with {co}', 'Update deal stage for {co}'],
   marketing: ['Write social posts for {camp}', 'Review ad results for {camp}', 'Design banner for {camp}', 'Send new leads from {camp} to Sales', 'Draft blog post: POS tips for cafés', 'Plan photos for the case study', 'Update the product brochure'],
@@ -115,7 +115,7 @@ function buildTeam() {
     let ref: string | null = null;
     const title = tpl.replace(/\{(\w+)\}/g, (m, k: string) => {
       switch (k) {
-        case 'co': return pick(CUSTOMERS);
+        case 'co': return pick(SAMPLE_CUSTOMERS);
         case 'camp': { const c = pick(SAMPLE_DATA.marketing.campaigns.slice(0, 4)); ref = c.name.split(',')[0] ?? c.name; return c.name; }
         case 'ship': { const s = pick(SAMPLE_DATA.importExport.shipments.slice(0, 5)); ref = s.id; return s.id; }
         case 'port': return pick(PORTS);
